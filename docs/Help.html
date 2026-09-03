@@ -22,13 +22,13 @@
 <nav><a href="#start">Getting started</a><a href="#how">How it answers</a><a href="#ask">Asking well</a><a href="#where">What it searches</a><a href="#ai">Apple Intelligence</a><a href="#cli">Command line</a><a href="#privacy">Privacy</a><a href="#trouble">Troubleshooting</a></nav>
 
 <h2 id="start">Getting started</h2>
-<p>Type a question the way you would ask a person who had read everything in your Documents, Desktop, Downloads, iCloud Drive and Mail. Press Return. The answer appears with the files it came from; Open opens one, the folder button shows it in Finder, the arrow shows the passage it was taken from.</p>
+<p>Type a question the way you would ask a person who had read everything in your Documents, Desktop, Downloads, iCloud Drive and Mail. Press Return, or press ⌥ Space from any app to bring the window forward first. The answer streams in with the files it came from; Open opens one, the folder button shows it in Finder, the arrow shows the passage it was taken from.</p>
 <div class="card">Nothing needs setting up. Ask for Mac uses the index your Mac already keeps (Spotlight) to find candidate files, then reads those files itself while it answers, and keeps nothing afterwards.</div>
 
 <h2 id="how">How it answers</h2>
 <ol>
 <li><strong>Find.</strong> Spotlight is asked for files whose text or name contains your words, within the date window if you named one.</li>
-<li><strong>Read.</strong> Those files are read on the Mac: PDF, Word, RTF, HTML, text, Markdown, CSV and Mail messages.</li>
+<li><strong>Read.</strong> Those files are read on the Mac: PDF, Word, RTF, HTML, text, Markdown, CSV and Mail messages, plus screenshots and Apple Notes when asked for. The window says what it is doing as it goes.</li>
 <li><strong>Rank.</strong> Each file is split into passages. Passages score on the words they contain and, using the Mac's own language model for word meaning, how close they are to the question. The best few win; no single file may take more than three places.</li>
 <li><strong>Answer.</strong> On macOS 26 with Apple Intelligence on, Apple's on-device model writes two or three sentences from those passages, each fact followed by a citation like [1], and says <em>The files I found do not answer that</em> when they do not. Otherwise the answer is the best-matching sentence quoted from the top file.</li>
 </ol>
@@ -43,7 +43,9 @@
 </ul>
 
 <h2 id="where">What it searches</h2>
-<p>Documents, Desktop, Downloads and iCloud Drive by default; add or remove folders in Settings. Mail is included when Ask for Mac has Full Disk Access, which macOS requires for reading another app's mail store; without it, files still work. Photos and other images are skipped in this version, as are Numbers, Pages and Keynote documents and Apple Notes.</p>
+<p>Documents, Desktop, Downloads and iCloud Drive by default; add or remove folders in Settings. Mail is included when Ask for Mac has Full Disk Access, which macOS requires for reading another app's mail store; without it, files still work.</p>
+<p><strong>Screenshots and photos</strong> are read with the Mac's own text recognition, but only when the question asks for a picture ("the screenshot of the wifi password", "photo of the receipt"), since reading every image for every question would be slow. Images matching the words in their name come first; failing that, the newest screenshots.</p>
+<p><strong>Apple Notes</strong> are read through the Notes app when a question mentions notes. macOS asks once whether Ask for Mac may control Notes; say yes and notes join the sources, with an Open in Notes button. Numbers, Pages and Keynote documents are not read in this version.</p>
 
 <h2 id="ai">Apple Intelligence</h2>
 <p>Written answers use Apple's on-device model, which exists on macOS 26 on Apple silicon with Apple Intelligence turned on in System Settings. The status line at the bottom of the window says which mode you are in. The model runs entirely on the Mac; Ask for Mac never uses Private Cloud Compute or any other server. Turn it off in Settings to always get quoted sentences instead.</p>
