@@ -31,9 +31,13 @@ enum Screenshots {
                                                  ("empty", "", nil as String?)] {
                 model.question = question; model.answer = nil
                 if !question.isEmpty {
-                    let sem = DispatchSemaphore(value: 0); var a: Answer?
-                    Task.detached { a = await Ask.run(question, useModel: false); sem.signal() }; sem.wait()
-                    if var a, let demoAnswer { a.text = demoAnswer; a.how = .model; a.elapsed = 1.2; model.answer = a } else { model.answer = a }
+                    // A box, not a captured var: Swift 6 rejects mutating a captured local from a task.
+                    let box = AnswerBox()
+                    let sem = DispatchSemaphore(value: 0)
+                    Task.detached { box.set(await Ask.run(question, useModel: false)); sem.signal() }
+                    sem.wait()
+                    let a = box.value
+                    if var shown = a, let demoAnswer { shown.text = demoAnswer; shown.how = .model; shown.elapsed = 1.2; model.answer = shown } else { model.answer = a }
                 }
                 let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 860, height: 600), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
                 w.title = "Ask for Mac"; w.contentView = NSHostingView(rootView: MainView().environmentObject(model).frame(width: 860, height: 600)); w.center(); w.makeKeyAndOrderFront(nil)
@@ -100,4 +104,14 @@ enum Demo {
         try put("Tax return 2025 summary.txt", "2025 return summary. Total tax: 14,212. Refund: 1,380. Filed April 9.", daysAgo: 140)
         try put("Recipes.txt", "Lemon cake: 3 eggs, 200 g sugar, zest of two lemons, 180 g flour.", daysAgo: 300)
     }
+}
+
+/// Carries one answer across the task boundary in the screenshot run, where the surrounding
+/// code is synchronous and cannot await. A lock, not a captured var: Swift 6 rejects mutating
+/// a captured local from concurrently-executing code.
+final class AnswerBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: Answer?
+    var value: Answer? { lock.lock(); defer { lock.unlock() }; return stored }
+    func set(_ a: Answer?) { lock.lock(); stored = a; lock.unlock() }
 }

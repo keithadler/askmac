@@ -31,7 +31,10 @@ final class PanelController {
             return e
         }
         // Like Spotlight: clicking anywhere else puts it away.
-        resignObserver = NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification, object: panel, queue: .main) { [weak self] _ in self?.hide() }
+        // The queue is .main, but the closure is not main-actor-isolated to the compiler; say so.
+        resignObserver = NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification, object: panel, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.hide() }
+        }
     }
 
     func hide() {
