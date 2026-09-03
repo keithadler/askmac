@@ -93,6 +93,18 @@ enum PipelineSuite {
             Sources.mdutil = { _ in "/:\n\tIndexing disabled." }; t.check(Sources.spotlightOff() != nil, "disabled reported")
             t.equal(CLI.run("skip", ["add", repos.path]), 0, "skip add"); t.equal(Prefs.skipped.count, 1, "stored"); t.equal(CLI.run("skip", ["remove", repos.path]), 0, "skip remove"); t.equal(Prefs.skipped.count, 0, "removed")
         },
+        TestCase(name: "a scope folder limits the question") { t in
+            let dir = URL(fileURLWithPath: Prefs.folders!.first!); try seed(dir)
+            let taxes = dir.appendingPathComponent("Taxes"); try FileManager.default.createDirectory(at: taxes, withIntermediateDirectories: true)
+            try "Tax return 2025: total tax 14,212, refund 1,380.".write(to: taxes.appendingPathComponent("return.txt"), atomically: true, encoding: .utf8)
+            Sources.scopeOverride = taxes; defer { Sources.scopeOverride = nil }
+            t.equal(Sources.folders, [taxes], "scope replaces the folders")
+            let a = ask("lease deposit"); t.equal(a.how, .none, "lease is outside the scope")
+            let b = ask("tax refund"); t.check(b.text.contains("1,380"), "inside the scope: \(b.text)")
+            Sources.scopeOverride = nil
+            t.equal(CLI.run("tax", ["refund", "--in", taxes.path, "--json"]), 0, "--in on the command line")
+            t.equal(Sources.scopeOverride?.path, taxes.path, "--in sets the scope")
+        },
         TestCase(name: "prompt for the on-device model is bounded and numbered") { t in
             let c = Candidate(url: URL(fileURLWithPath: "/tmp/x.txt"), kind: .text, modified: nil)
             let scored = (0..<10).map { i in Scored(passage: Passage(source: c, text: String(repeating: "word ", count: 600), index: i), score: 1, keyword: 1, meaning: 0) }

@@ -6,7 +6,7 @@ Ask your Mac a question in your own words. Get the answer, and the file it came 
 
 ## Download
 
-**[Download Ask-for-Mac-0.6.0.dmg](https://github.com/keithadler/askmac/releases/latest/download/Ask-for-Mac-0.6.0.dmg)** (macOS 14 or later, Apple Silicon and Intel; written answers need macOS 26 with Apple Intelligence)
+**[Download Ask-for-Mac-0.7.0.dmg](https://github.com/keithadler/askmac/releases/latest/download/Ask-for-Mac-0.7.0.dmg)** (macOS 14 or later, Apple Silicon and Intel; written answers need macOS 26 with Apple Intelligence)
 
 Open the DMG, drag the app to Applications, open it. The first time, macOS says the app is from an unidentified developer: right-click the app, choose Open, then Open again. That is once. Nothing else to set up.
 
@@ -19,13 +19,13 @@ Open the DMG, drag the app to Applications, open it. The first time, macOS says 
 3. **Rank.** Each file becomes passages, scored on the words they contain and on meaning, using the Mac's own word embeddings. No file may take more than three places.
 4. **Answer.** On macOS 26 with Apple Intelligence, Apple's on-device model writes two or three sentences from those passages with numbered citations, and says plainly when the files do not answer. Anywhere else, the answer is the best sentence quoted from the top file.
 
-Every answer lists its sources. An answer you cannot check is not an answer. While it works, the window says what it is doing ("Reading 12 files…") and the answer streams in as Apple's model writes it. ⌥ Space brings the window forward from anywhere. Follow-ups work: after "lease deposit", "and when is rent due" keeps looking at the lease.
+Every answer lists its sources. An answer you cannot check is not an answer. While it works, the window says what it is doing ("Reading 12 files…") and the answer streams in as Apple's model writes it. ⌥ Space brings the window forward from anywhere. Follow-ups work: after "lease deposit", "and when is rent due" keeps looking at the lease. Drop a folder on the window to ask about just that folder, or `--in <folder>` on the command line.
 
 ## What it does not do
 
 - It does not upload anything, anywhere, ever. No account, no server, no Private Cloud Compute.
 - It does not build a second index of your files. Spotlight's is the only one.
-- It does not read Numbers, Pages or Keynote yet; Apple keeps their text in a format nothing else can read. Images are read only when a question asks for a screenshot or photo, because recognising text in every picture for every question would be slow.
+- Numbers, Pages and Keynote are read through the preview image Apple stores inside each document, so the first page only. Apple keeps the rest in a format nothing else can read. Images are read only when a question asks for a screenshot or photo, because recognising text in every picture for every question would be slow.
 - It does not answer from general knowledge. If it is not in your files, it says so, and lists the closest files so you can look yourself.
 - Folders you do not want searched, a folder of source repositories inside Downloads say, can be skipped in Settings or with `askmac skip add <path>`.
 

@@ -7,6 +7,7 @@ import AppKit
 import ServiceManagement
 import Quartz
 import QuickLook
+import UniformTypeIdentifiers
 
 @main
 struct AskMacApp: App {
@@ -51,6 +52,7 @@ final class AskModel: ObservableObject {
     @Published var history = Prefs.history
     @Published var modelNote = Answerer.modelStatus().why
     @Published var modelAvailable = Answerer.modelStatus().available
+    @Published var scope: URL? { didSet { Sources.scopeOverride = scope } }
     private var task: Task<Void, Never>?
     func stop() { task?.cancel(); task = nil; busy = false; status = ""; partial = ""; if answer == nil { answer = Answer(text: "", how: .none, sources: [], elapsed: 0, candidates: 0, note: "Stopped.") } }
     func openSource(_ n: Int) {
@@ -86,6 +88,12 @@ struct MainView: View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 Image(systemName: "questionmark.bubble").font(.title2).foregroundStyle(.secondary)
+                if let scope = model.scope {
+                    HStack(spacing: 4) {
+                        Image(systemName: "folder"); Text(scope.lastPathComponent)
+                        Button { model.scope = nil } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain).help("Search everywhere again")
+                    }.font(.callout).padding(.horizontal, 8).padding(.vertical, 4).background(.tint.opacity(0.15), in: Capsule()).help("This question looks only in \(scope.path)")
+                }
                 TextField(model.answer == nil ? "Ask about your files, in your own words" : "Ask a follow-up, or something new", text: $model.question).textFieldStyle(.plain).font(.title2).focused($focused).onSubmit { model.ask() }
                     .onExitCommand { model.question = "" }
                 if model.busy { ProgressView().controlSize(.small); Button("Stop") { model.stop() }.keyboardShortcut(".", modifiers: .command) }
@@ -114,6 +122,15 @@ struct MainView: View {
             }.padding(.horizontal, 18).padding(.vertical, 8)
         }
         .onAppear { focused = true }
+        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+            guard let p = providers.first else { return false }
+            _ = p.loadObject(ofClass: URL.self) { url, _ in
+                guard let url else { return }
+                var isDir: ObjCBool = false; FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
+                Task { @MainActor in model.scope = isDir.boolValue ? url : url.deletingLastPathComponent(); focused = true }
+            }
+            return true
+        }
     }
 }
 
@@ -122,7 +139,7 @@ struct EmptyStateView: View {
     let examples = ["lease deposit amount", "what did the dentist invoice say", "email from Sam about the roof last week", "tax return 2025 total", "meeting notes from Tuesday"]
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Ask like you would ask a person who had read everything in your Documents, Desktop, Downloads, iCloud Drive and Mail.").foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text("Ask like you would ask a person who had read everything in your Documents, Desktop, Downloads, iCloud Drive and Mail. Drop a folder here to ask about just that folder.").foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Text("Try").font(.headline)
             ForEach(examples, id: \.self) { e in Button { model.question = e; model.ask() } label: { Label(e, systemImage: "arrow.turn.down.right") }.buttonStyle(.link) }
             if !model.history.isEmpty {

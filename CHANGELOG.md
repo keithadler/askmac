@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.0 — 2026-09-03
+
+Drop a folder on the window to ask about just that folder (`--in <folder>` on the command line). Numbers, Pages and Keynote are read through their built-in preview image, first page only.
+
 ## 0.6.0 — 2026-09-03
 
 Skip folders inside the searched ones (Settings, or `askmac skip add`). When Spotlight indexing is off for a volume, the app says so instead of finding nothing silently. When hundreds of files match, the ones whose names carry the words come first. Answers come in the language of the question. When the model says the files do not answer, the list is labelled "Closest matches".

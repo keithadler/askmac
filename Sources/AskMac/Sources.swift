@@ -17,8 +17,11 @@ struct Candidate: Hashable {
 }
 
 enum Sources {
+    /// A folder dropped on the window or given with --in: this question looks only there.
+    static var scopeOverride: URL?
     /// Folders searched by default. Settings can change this.
     static var folders: [URL] {
+        if let scopeOverride { return [scopeOverride] }
         if let saved = Prefs.folders, !saved.isEmpty { return saved.map { URL(fileURLWithPath: $0) } }
         let home = FileManager.default.homeDirectoryForCurrentUser
         var out = ["Documents", "Desktop", "Downloads"].map { home.appendingPathComponent($0) }
@@ -186,7 +189,8 @@ enum Sources {
         for folder in folders {
             guard let e = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: [.isRegularFileKey, .contentModificationDateKey, .fileSizeKey], options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { continue }
             for case let url as URL in e {
-                guard (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
+                let v = try? url.resourceValues(forKeys: [.isRegularFileKey, .isPackageKey])
+                guard v?.isRegularFile == true || (v?.isPackage == true && ["numbers", "pages", "key"].contains(url.pathExtension.lowercased())) else { continue }
                 let k = kind(of: url); if k == .image || skipped(url) { continue }
                 if k == .code, !q.kinds.contains(.code) { continue }
                 if !q.kinds.isEmpty, !q.kinds.contains(k) { continue }

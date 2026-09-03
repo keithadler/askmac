@@ -43,8 +43,9 @@ enum Extract {
         cached(url) { (nil, textUncached(from: url)) }.text
     }
     static func textUncached(from url: URL) -> String? {
-        guard let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize), size <= maxBytes else { return nil }
         let ext = url.pathExtension.lowercased()
+        if ["numbers", "pages", "key"].contains(ext) { return iWork(url).flatMap { $0.isEmpty ? nil : $0 } }   // packages have no file size
+        guard let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize), size <= maxBytes else { return nil }
         var out: String?
         switch ext {
         case "pdf": out = pdf(url)
@@ -56,7 +57,7 @@ enum Extract {
         case "csv", "tsv", "txt", "md", "markdown", "text", "json", "xml", "yaml", "yml", "log", "swift", "py", "js", "ts", "sh", "rb", "go", "c", "h", "m", "java", "tex", "org", "ics", "vcf", "eml2":
             out = plain(url)
         case "png", "jpg", "jpeg", "heic", "tiff", "gif", "webp", "bmp": out = OCR.recognize(url)
-        case "xlsx", "pptx", "numbers", "pages", "key": out = nil      // not this version
+        case "numbers", "pages", "key": out = iWork(url)
         default:
             // Unknown extension: try it as text when it looks like text.
             if let d = try? Data(contentsOf: url, options: .mappedIfSafe), d.prefix(4096).allSatisfy({ $0 == 9 || $0 == 10 || $0 == 13 || $0 >= 32 }) { out = String(decoding: d, as: UTF8.self) }
@@ -77,6 +78,27 @@ enum Extract {
             if total > maxChars { break }
         }
         return out.allSatisfy({ $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) ? nil : out
+    }
+
+    /// Apple keeps iWork text in a format nothing else reads, but each document carries a preview
+    /// image of its first page, which on-device text recognition can read. First page only, and
+    /// only when the document was saved with a preview (the default). Said plainly in Help.
+    static func iWork(_ url: URL) -> String? {
+        var isDir: ObjCBool = false
+        FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("askmac-iwork-\(UUID().uuidString).jpg")
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        if isDir.boolValue {
+            let preview = url.appendingPathComponent("preview.jpg")
+            guard FileManager.default.fileExists(atPath: preview.path) else { return nil }
+            return OCR.recognize(preview)
+        }
+        let p = Process(); p.executableURL = URL(fileURLWithPath: "/usr/bin/unzip"); p.arguments = ["-p", url.path, "preview.jpg"]
+        let pipe = Pipe(); p.standardOutput = pipe; p.standardError = FileHandle.nullDevice
+        do { try p.run() } catch { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile(); p.waitUntilExit()
+        guard !data.isEmpty, (try? data.write(to: tmp)) != nil else { return nil }
+        return OCR.recognize(tmp)
     }
 
     /// Office files are zips of XML; the text is what is left after the tags. Uses the system unzip.

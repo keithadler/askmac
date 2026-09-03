@@ -78,6 +78,22 @@ enum ExtractSuite {
             let p = Extract.text(from: dir.appendingPathComponent("review.pptx")); t.check(p?.contains("Quarterly review") == true && p?.contains("Revenue up 12%") == true, "pptx: \(p ?? "nil")")
             t.check(p?.contains("<") == false, "no tags left")
         },
+        TestCase(name: "iWork documents through their preview image") { t in
+            let dir = TestKit.tempDir(); defer { try? FileManager.default.removeItem(at: dir) }
+            let img = NSImage(size: NSSize(width: 600, height: 200)); img.lockFocus()
+            NSColor.white.setFill(); NSRect(x: 0, y: 0, width: 600, height: 200).fill()
+            NSAttributedString(string: "Quarterly budget: total 84,000", attributes: [.font: NSFont.systemFont(ofSize: 34, weight: .semibold), .foregroundColor: NSColor.black]).draw(at: NSPoint(x: 30, y: 80))
+            img.unlockFocus()
+            let jpg = NSBitmapImageRep(data: img.tiffRepresentation!)!.representation(using: .jpeg, properties: [.compressionFactor: 0.9])!
+            // Package form (a folder) and zip form, both with preview.jpg at the top.
+            let pkg = dir.appendingPathComponent("Budget.numbers"); try FileManager.default.createDirectory(at: pkg, withIntermediateDirectories: true); try jpg.write(to: pkg.appendingPathComponent("preview.jpg"))
+            t.check(Extract.text(from: pkg)?.contains("84,000") == true, "package preview read: \(Extract.text(from: pkg) ?? "nil")")
+            let src = dir.appendingPathComponent("src"); try FileManager.default.createDirectory(at: src, withIntermediateDirectories: true); try jpg.write(to: src.appendingPathComponent("preview.jpg"))
+            let z = Process(); z.executableURL = URL(fileURLWithPath: "/usr/bin/zip"); z.currentDirectoryURL = src; z.arguments = ["-qr", dir.appendingPathComponent("Plan.pages").path, "."]; try z.run(); z.waitUntilExit()
+            t.check(Extract.text(from: dir.appendingPathComponent("Plan.pages"))?.contains("84,000") == true, "zip preview read")
+            let none = dir.appendingPathComponent("Empty.key"); try FileManager.default.createDirectory(at: none, withIntermediateDirectories: true)
+            t.check(Extract.text(from: none) == nil, "no preview is nil, not a crash")
+        },
         TestCase(name: "html-only mail is stripped") { t in
             let m = Extract.parseRFC822("Subject: Hi\nContent-Type: text/html\n\n<html><body><p>Deposit <b>returned</b>.</p></body></html>")
             t.check(m.body.contains("Deposit returned"), "stripped: \(m.body)"); t.equal(m.subject, "Hi", "subject")

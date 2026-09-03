@@ -10,7 +10,8 @@ enum CLI {
     askmac — ask your files a question, answered on this Mac (command-line face)
 
     USAGE
-      askmac "<question>" [--json] [--quote] [--limit N]   answer with sources; --quote skips the on-device model
+      askmac "<question>" [--json] [--quote] [--limit N] [--in <folder>]
+                                                             answer with sources; --quote skips the model; --in looks only there
       askmac status [--json]                                 folders searched, Spotlight, Apple Intelligence
       askmac folders [add|remove <path>]                     which folders are searched
       askmac skip [add|remove <path>]                        folders inside those that are never searched
@@ -46,7 +47,7 @@ enum CLI {
     static func value(_ n: String, _ a: [String]) -> String? { guard let i = a.firstIndex(of: n), i + 1 < a.count else { return nil }; return a[i + 1] }
     static func positional(_ a: [String]) -> [String] {
         var out: [String] = []; var skip = false
-        for x in a { if skip { skip = false; continue }; if ["--filter", "--limit"].contains(x) { skip = true; continue }; if x.hasPrefix("--") { continue }; out.append(x) }
+        for x in a { if skip { skip = false; continue }; if ["--filter", "--limit", "--in"].contains(x) { skip = true; continue }; if x.hasPrefix("--") { continue }; out.append(x) }
         return out
     }
     static var quiet = false
@@ -103,6 +104,7 @@ enum CLI {
             let question = ([cmd] + pos).joined(separator: " ")
             guard question.count > 2 else { err(usage + "\n"); return 64 }
             let limit = Int(value("--limit", args) ?? "") ?? 8
+            if let folder = value("--in", args) { Sources.scopeOverride = URL(fileURLWithPath: folder).standardizedFileURL }
             let sem = DispatchSemaphore(value: 0); var answer: Answer?
             Task { answer = await Ask.run(question, useModel: !flag("--quote", args) && Prefs.useModel, limit: limit); sem.signal() }
             sem.wait()
