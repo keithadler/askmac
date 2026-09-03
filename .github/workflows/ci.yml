@@ -2,7 +2,9 @@ name: CI
 on: [push, pull_request]
 jobs:
   test:
-    runs-on: macos-14
+    # Ask weak-links FoundationModels, which only exists in the macOS 26 SDK; on older images
+    # the link fails with "framework 'FoundationModels' not found" even though it is weak.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - run: swift build
