@@ -58,7 +58,7 @@ final class PanelController {
         p.isMovableByWindowBackground = true; p.becomesKeyOnlyIfNeeded = false
         p.isOpaque = false; p.backgroundColor = .clear; p.hasShadow = true
         let hv = NSHostingView(rootView: AnyView(PanelView().environmentObject(AskModel.shared).frame(width: 720)))
-        hv.sizingOptions = []
+        hv.sizingOptions = [.intrinsicContentSize]   // measure, but never resize the window on its own
         p.contentView = hv; host = hv
         p.isReleasedWhenClosed = false
         panel = p

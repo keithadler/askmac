@@ -39,7 +39,7 @@ enum Screenshots {
                 w.title = "Ask for Mac"; w.contentView = NSHostingView(rootView: MainView().environmentObject(model).frame(width: 860, height: 600)); w.center(); w.makeKeyAndOrderFront(nil)
                 settle(); written.append(try capture(w, to: dir.appendingPathComponent("\(name)\(suffix).png"))); w.orderOut(nil)
                 // The quick panel, floating over a neutral backdrop so its material shows.
-                let panelHost = NSHostingView(rootView: PanelView().environmentObject(model).frame(width: 720)); panelHost.sizingOptions = []
+                let panelHost = NSHostingView(rootView: PanelView().environmentObject(model).frame(width: 720)); panelHost.sizingOptions = [.intrinsicContentSize]
                 let ph = min(max(panelHost.fittingSize.height, 72), 640)
                 let back = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 860, height: ph + 140), styleMask: [.borderless], backing: .buffered, defer: false)
                 back.backgroundColor = appearance == .darkAqua ? NSColor(calibratedRed: 0.16, green: 0.20, blue: 0.30, alpha: 1) : NSColor(calibratedRed: 0.80, green: 0.85, blue: 0.92, alpha: 1); back.center(); back.orderFront(nil)
