@@ -25,6 +25,7 @@ enum Extract {
             out = (try? NSAttributedString(url: url, options: [:], documentAttributes: nil))?.string
         case "csv", "tsv", "txt", "md", "markdown", "text", "json", "xml", "yaml", "yml", "log", "swift", "py", "js", "ts", "sh", "rb", "go", "c", "h", "m", "java", "tex", "org", "ics", "vcf", "eml2":
             out = plain(url)
+        case "png", "jpg", "jpeg", "heic", "tiff", "gif", "webp", "bmp": out = OCR.recognize(url)
         case "xlsx", "pptx", "numbers", "pages", "key": out = nil      // not this version
         default:
             // Unknown extension: try it as text when it looks like text.

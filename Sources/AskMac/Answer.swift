@@ -44,12 +44,12 @@ enum Answerer {
         return (false, "Written answers need macOS 26 with Apple Intelligence; on this Mac answers are quoted from your files.")
     }
 
-    static func answer(_ q: Query, scored: [Scored], candidates: Int, useModel: Bool, started: Date) async -> Answer {
+    static func answer(_ q: Query, scored: [Scored], candidates: Int, useModel: Bool, started: Date, onPartial: ((String) -> Void)? = nil) async -> Answer {
         guard let top = scored.first else {
             return Answer(text: "", how: .none, sources: [], elapsed: Date().timeIntervalSince(started), candidates: candidates,
                           note: candidates == 0 ? "Nothing on this Mac matches those words." : "Files matched the words, but no passage answered the question.")
         }
-        if useModel, modelStatus().available, let written = await writeWithModel(q, scored: scored) {
+        if useModel, modelStatus().available, let written = await writeWithModel(q, scored: scored, onPartial: onPartial) {
             return Answer(text: written, how: .model, sources: scored, elapsed: Date().timeIntervalSince(started), candidates: candidates, note: nil)
         }
         let sentence = Passages.bestSentence(q.terms, in: top.passage.text)
@@ -69,13 +69,16 @@ enum Answerer {
     }
     static let instructions = "You answer questions using only the numbered passages provided, which come from the person's own files. Answer in at most three plain sentences. After each fact, cite the passage number in square brackets like [1]. If the passages do not contain the answer, say exactly: The files I found do not answer that. Never invent names, numbers or dates."
 
-    static func writeWithModel(_ q: Query, scored: [Scored]) async -> String? {
+    static func writeWithModel(_ q: Query, scored: [Scored], onPartial: ((String) -> Void)? = nil) async -> String? {
         #if canImport(FoundationModels)
         if #available(macOS 26.0, *) {
             do {
                 let session = LanguageModelSession(instructions: instructions)
-                let r = try await session.respond(to: prompt(q, scored: scored))
-                let text = r.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                var last = ""
+                for try await partial in session.streamResponse(to: prompt(q, scored: scored)) {
+                    last = partial.content; onPartial?(last)
+                }
+                let text = last.trimmingCharacters(in: .whitespacesAndNewlines)
                 return text.isEmpty ? nil : text
             } catch { return nil }
         }
@@ -87,27 +90,31 @@ enum Answerer {
 /// The whole pipeline in one call, used by the window and the command line alike.
 enum Ask {
     static var useSpotlight = true
-    static func run(_ text: String, useModel: Bool = Prefs.useModel, limit: Int = 8) async -> Answer {
+    static func run(_ text: String, useModel: Bool = Prefs.useModel, limit: Int = 8, progress: ((String) -> Void)? = nil, onPartial: ((String) -> Void)? = nil) async -> Answer {
         let started = Date(); var phases: [String: Double] = [:]; var mark = Date()
+        progress?("Finding files…")
         func lap(_ name: String) { phases[name] = (Date().timeIntervalSince(mark) * 100).rounded() / 100; mark = Date() }
         let q = Query.parse(text)
         var cands = useSpotlight ? Sources.candidates(for: q) : Sources.walk(q, folders: Sources.folders)
         if cands.isEmpty, useSpotlight, !q.terms.isEmpty { cands = Sources.walk(q, folders: Sources.folders, limit: 20) }   // Spotlight off or behind
         lap("find")
-        // Read candidates in parallel; each file's text lives only until it is split into passages.
         let toRead = Array(cands.prefix(40))
+        progress?(toRead.isEmpty ? "Nothing matched." : "Reading \(toRead.count) \(toRead.count == 1 ? "file" : "files")…")
+        // Read candidates in parallel; each file's text lives only until it is split into passages.
         var perFile = [[Passage]](repeating: [], count: toRead.count)
         let lock = NSLock()
         DispatchQueue.concurrentPerform(iterations: toRead.count) { i in
             autoreleasepool {
-                if let t = Extract.text(from: toRead[i].url) { let p = Passages.split(t, source: toRead[i]); lock.lock(); perFile[i] = p; lock.unlock() }
+                if let t = toRead[i].text ?? Extract.text(from: toRead[i].url) { let p = Passages.split(t, source: toRead[i]); lock.lock(); perFile[i] = p; lock.unlock() }
             }
         }
         let passages = perFile.flatMap { $0 }
         lap("read")
+        progress?("Ranking \(passages.count) passages…")
         let scored = Passages.rank(q, passages: passages, limit: limit)
         lap("rank")
-        var a = await Answerer.answer(q, scored: scored, candidates: cands.count, useModel: useModel, started: started)
+        progress?(useModel && Answerer.modelStatus().available && !scored.isEmpty ? "Writing the answer…" : "Picking the sentence…")
+        var a = await Answerer.answer(q, scored: scored, candidates: cands.count, useModel: useModel, started: started, onPartial: onPartial)
         lap("answer"); a.phases = phases
         return a
     }
@@ -118,6 +125,8 @@ enum Prefs {
     static var folders: [String]? { get { defaults.stringArray(forKey: "folders") } set { defaults.set(newValue, forKey: "folders") } }
     static var useModel: Bool { get { defaults.object(forKey: "useModel") as? Bool ?? true } set { defaults.set(newValue, forKey: "useModel") } }
     static var includeMail: Bool { get { defaults.object(forKey: "includeMail") as? Bool ?? true } set { defaults.set(newValue, forKey: "includeMail") } }
+    static var includeNotes: Bool { get { defaults.object(forKey: "includeNotes") as? Bool ?? true } set { defaults.set(newValue, forKey: "includeNotes") } }
+    static var hotkey: Bool { get { defaults.object(forKey: "hotkey") as? Bool ?? true } set { defaults.set(newValue, forKey: "hotkey") } }
     static var menuBar: Bool { get { defaults.object(forKey: "menuBar") as? Bool ?? true } set { defaults.set(newValue, forKey: "menuBar") } }
     static var keepHistory: Bool { get { defaults.object(forKey: "keepHistory") as? Bool ?? true } set { defaults.set(newValue, forKey: "keepHistory") } }
     static var history: [String] { get { defaults.stringArray(forKey: "history") ?? [] } set { defaults.set(Array(newValue.suffix(50)), forKey: "history") } }

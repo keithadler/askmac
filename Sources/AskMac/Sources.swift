@@ -10,6 +10,8 @@ struct Candidate: Hashable {
     let url: URL
     let kind: Query.Kind
     let modified: Date?
+    var text: String? = nil       // already-known content (Apple Notes); files are read on demand
+    var noteId: String? = nil
     var isMail: Bool { kind == .mail }
 }
 
@@ -31,6 +33,7 @@ enum Sources {
             return f.lastPathComponent + (rest.isEmpty ? "" : String(rest))
         }
         if url.path.hasPrefix(mailFolder.path) { return "Mail" }
+        if url.path.hasPrefix("/Notes/") { return "Notes" }
         return url.path.replacingOccurrences(of: FileManager.default.homeDirectoryForCurrentUser.path, with: "~")
     }
     static var mailFolder: URL { FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Mail") }
@@ -77,9 +80,33 @@ enum Sources {
     static let skippedPathParts = ["/.git/", "/node_modules/", "/.build/", "/DerivedData/", "/Library/Caches/", "/.Trash/", "/Pods/", "/vendor/", "/dist/", "/target/"]
     static func skipped(_ url: URL) -> Bool { skippedPathParts.contains { url.path.contains($0) } }
 
+    /// Images by name and date only: Spotlight has no text for most of them; OCR supplies it.
+    static func imageQuery(_ q: Query) -> String {
+        var parts = ["kMDItemContentTypeTree == \"public.image\""]
+        let named = q.terms.filter { $0 != "screenshot" }.prefix(4).map { "kMDItemDisplayName == \"*\($0)*\"cd" }
+        if !named.isEmpty { parts.append("(" + named.joined(separator: " || ") + ")") }
+        if let s = q.since { parts.append("kMDItemContentModificationDate >= $time.iso(\(iso(s)))") }
+        if let u = q.until { parts.append("kMDItemContentModificationDate < $time.iso(\(iso(u)))") }
+        return parts.joined(separator: " && ")
+    }
+
     static func candidates(for q: Query, limit: Int = 60) -> [Candidate] {
-        var filePaths: [String] = [], mailPaths: [String] = []
+        var filePaths: [String] = [], mailPaths: [String] = [], imagePaths: [String] = []
+        var notes: [NoteHit] = []
         let group = DispatchGroup()
+        if q.kinds.contains(.image) {
+            group.enter(); DispatchQueue.global().async {
+                var args: [String] = []; for f in folders { args += ["-onlyin", f.path] }
+                var r = mdfind(args + [imageQuery(q)])
+                if r.isEmpty, q.since == nil {   // no name match: the newest screenshots are the likely answer
+                    var recent = q; recent.since = Date().addingTimeInterval(-30 * 86400); recent.terms = []; r = mdfind(args + [imageQuery(recent)])
+                }
+                imagePaths = Array(r.prefix(20)); group.leave()
+            }
+        }
+        if q.scopes.contains(.notes), Prefs.includeNotes {
+            group.enter(); DispatchQueue.global().async { notes = Notes.search(q.terms); group.leave() }
+        }
         if q.scopes.contains(.files) {
             group.enter(); DispatchQueue.global().async {
                 var args: [String] = []
@@ -95,7 +122,7 @@ enum Sources {
             group.enter(); DispatchQueue.global().async { mailPaths = mdfind(["-onlyin", mailFolder.path, spotlightQuery(q, mail: true)]); group.leave() }
         }
         group.wait()
-        let paths = filePaths + mailPaths
+        let paths = filePaths + mailPaths + imagePaths
         var seen = Set<String>()
         var out: [Candidate] = []
         for p in paths where seen.insert(p).inserted && !p.isEmpty {
@@ -103,10 +130,14 @@ enum Sources {
             let k = kind(of: url)
             if skipped(url) { continue }
             if !q.kinds.isEmpty, !q.kinds.contains(k), k != .mail { continue }
-            if k == .image { continue }   // no OCR in this version; Spotlight's own text for images is thin
+            if k == .image, !q.kinds.contains(.image) { continue }   // images only when asked for; OCR is slow
             if k == .code, !q.kinds.contains(.code) { continue }   // source code answers nothing about a lease
             let mod = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? nil
             out.append(Candidate(url: url, kind: k, modified: mod))
+        }
+        for n in notes {
+            var c = Candidate(url: URL(fileURLWithPath: "/Notes/\(n.name.replacingOccurrences(of: "/", with: "-")).note"), kind: .note, modified: n.modified)
+            c.text = n.name + "\n\n" + n.body; c.noteId = n.id; out.append(c)
         }
         // Newest first among candidates; ranking will reorder by relevance.
         return Array(out.sorted { ($0.modified ?? .distantPast) > ($1.modified ?? .distantPast) }.prefix(limit))

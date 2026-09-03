@@ -39,6 +39,17 @@ enum ExtractSuite {
             t.check(m?.date != nil, "date parsed")
             let text = Extract.text(from: dir.appendingPathComponent("1.emlx")); t.check(text?.hasPrefix("Roof estimate") == true && text?.contains("From: Sam") == true, "text form includes headers")
         },
+        TestCase(name: "screenshots are read with on-device text recognition") { t in
+            let dir = TestKit.tempDir(); defer { try? FileManager.default.removeItem(at: dir) }
+            let img = NSImage(size: NSSize(width: 600, height: 200)); img.lockFocus()
+            NSColor.white.setFill(); NSRect(x: 0, y: 0, width: 600, height: 200).fill()
+            NSAttributedString(string: "WIFI PASSWORD: sunflower42", attributes: [.font: NSFont.systemFont(ofSize: 36, weight: .semibold), .foregroundColor: NSColor.black]).draw(at: NSPoint(x: 30, y: 80))
+            img.unlockFocus()
+            let png = NSBitmapImageRep(data: img.tiffRepresentation!)!.representation(using: .png, properties: [:])!
+            try png.write(to: dir.appendingPathComponent("Screenshot 2026-09-01.png"))
+            let text = Extract.text(from: dir.appendingPathComponent("Screenshot 2026-09-01.png"))
+            t.check(text?.lowercased().contains("sunflower42") == true, "ocr text: \(text ?? "nil")")
+        },
         TestCase(name: "html-only mail is stripped") { t in
             let m = Extract.parseRFC822("Subject: Hi\nContent-Type: text/html\n\n<html><body><p>Deposit <b>returned</b>.</p></body></html>")
             t.check(m.body.contains("Deposit returned"), "stripped: \(m.body)"); t.equal(m.subject, "Hi", "subject")

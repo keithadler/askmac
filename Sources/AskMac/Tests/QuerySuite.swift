@@ -27,6 +27,17 @@ enum QuerySuite {
             let n = Query.parse("my notes on the garden", now: now); t.check(n.scopes.contains(.notes), "notes scope")
             let s = Query.parse("spreadsheet with the budget", now: now); t.equal(s.kinds, [.spreadsheet], "spreadsheet")
         },
+        TestCase(name: "notes come through the Notes app and parse") { t in
+            let saved = Notes.runner; defer { Notes.runner = saved }
+            var seenScript = ""
+            Notes.runner = { script in seenScript = script; return "x-coredata://1/ICNote/p1\(Notes.us)Garden plan\(Notes.us)2026-08-30T10:00:00\(Notes.us)Plant the tulips in October.\(Notes.rs)x-coredata://1/ICNote/p2\(Notes.us)Groceries\(Notes.us)2026-09-01T09:00:00\(Notes.us)Milk, eggs.\(Notes.rs)" }
+            let hits = Notes.search(["tulips", "october"])
+            t.equal(hits.count, 2, "two notes"); t.equal(hits.first?.name, "Garden plan", "name"); t.check(hits.first?.body.contains("tulips") == true, "body")
+            t.check(hits.first?.modified != nil, "date parsed"); t.check(seenScript.contains("plaintext contains \"tulips\" and plaintext contains \"october\""), "script clause: \(seenScript.prefix(200))")
+            t.equal(Notes.parse("").count, 0, "empty output")
+            let q = Query.parse("my notes about tulips"); t.check(q.scopes.contains(.notes), "notes scope")
+            let s = Sources.imageQuery(Query.parse("screenshot of the wifi password")); t.check(s.contains("public.image") && s.contains("*wifi*"), "image query: \(s)")
+        },
         TestCase(name: "spotlight query text") { t in
             let q = Query.parse("lease deposit last week", now: now)
             let s = Sources.spotlightQuery(q, mail: false)

@@ -41,14 +41,19 @@ final class AskModel: ObservableObject {
     @Published var question = ""
     @Published var answer: Answer?
     @Published var busy = false
+    @Published var status = ""
+    @Published var partial = ""
     @Published var history = Prefs.history
     @Published var modelNote = Answerer.modelStatus().why
     @Published var modelAvailable = Answerer.modelStatus().available
     func ask() {
         let q = question.trimmingCharacters(in: .whitespaces); guard q.count > 2, !busy else { return }
-        busy = true; answer = nil
+        busy = true; answer = nil; partial = ""; status = "Finding files…"
         if Prefs.keepHistory { var h = Prefs.history.filter { $0 != q }; h.append(q); Prefs.history = h; history = Prefs.history }
-        Task { let a = await Ask.run(q); self.answer = a; self.busy = false }
+        Task {
+            let a = await Ask.run(q, progress: { s in Task { @MainActor in self.status = s } }, onPartial: { p in Task { @MainActor in self.partial = p } })
+            self.answer = a; self.busy = false; self.status = ""
+        }
     }
 }
 
@@ -66,7 +71,10 @@ struct MainView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     if let a = model.answer { AnswerView(answer: a) }
-                    else if model.busy { Text("Reading your files…").foregroundStyle(.secondary) }
+                    else if model.busy {
+                        if !model.partial.isEmpty { Text(model.partial).font(.title3).padding(16).frame(maxWidth: .infinity, alignment: .leading).background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10)) }
+                        HStack(spacing: 8) { ProgressView().controlSize(.small); Text(model.status).foregroundStyle(.secondary) }
+                    }
                     else { EmptyStateView() }
                 }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -132,14 +140,17 @@ struct SourceRow: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top, spacing: 10) {
                 Text("\(number)").font(.caption.bold()).frame(width: 18, height: 18).background(.secondary.opacity(0.2), in: Circle())
-                Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().frame(width: 28, height: 28)
+                Image(nsImage: scored.passage.source.noteId != nil ? (NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Notes").map { NSWorkspace.shared.icon(forFile: $0.path) } ?? NSWorkspace.shared.icon(forFile: url.path)) : NSWorkspace.shared.icon(forFile: url.path)).resizable().frame(width: 28, height: 28)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(scored.passage.title).font(.body.weight(.medium))
                     Text([scored.passage.source.modified.map { $0.formatted(date: .abbreviated, time: .omitted) }, Sources.displayPath(url.deletingLastPathComponent())].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                 }
                 Spacer()
-                Button("Open") { NSWorkspace.shared.open(url) }
-                Button { NSWorkspace.shared.activateFileViewerSelecting([url]) } label: { Image(systemName: "folder") }.help("Show in Finder")
+                if let id = scored.passage.source.noteId { Button("Open in Notes") { Notes.show(id: id) } }
+                else {
+                    Button("Open") { NSWorkspace.shared.open(url) }
+                    Button { NSWorkspace.shared.activateFileViewerSelecting([url]) } label: { Image(systemName: "folder") }.help("Show in Finder")
+                }
                 Button { expanded.toggle() } label: { Image(systemName: expanded ? "chevron.up" : "chevron.down") }.help("Show the passage")
             }
             if expanded { Text(scored.passage.text).font(.callout).textSelection(.enabled).padding(.leading, 56).foregroundStyle(.secondary) }
@@ -153,6 +164,8 @@ struct SettingsView: View {
     @State private var folders = Sources.folders
     @State private var useModel = Prefs.useModel
     @State private var includeMail = Prefs.includeMail
+    @State private var includeNotes = Prefs.includeNotes
+    @State private var hotkey = Prefs.hotkey
     @State private var menuBar = Prefs.menuBar
     @State private var keepHistory = Prefs.keepHistory
     @State private var login = SMAppService.mainApp.status == .enabled
@@ -166,6 +179,8 @@ struct SettingsView: View {
                     if p.runModal() == .OK, let u = p.url { folders.append(u); Prefs.folders = folders.map(\.path) }
                 }
                 Toggle("Include Mail", isOn: $includeMail).onChange(of: includeMail) { _, v in Prefs.includeMail = v }
+                Toggle("Include Apple Notes when a question mentions notes", isOn: $includeNotes).onChange(of: includeNotes) { _, v in Prefs.includeNotes = v }
+                Text("Notes are read through the Notes app; macOS asks once whether Ask for Mac may control it. Screenshots and photos are read with on-device text recognition when a question asks for them.").font(.caption).foregroundStyle(.secondary)
                 if includeMail, !FileManager.default.isReadableFile(atPath: Sources.mailFolder.path) {
                     Text("Reading Mail needs Full Disk Access for Ask for Mac. Files work without it.").font(.caption).foregroundStyle(.secondary)
                     Button("Open Full Disk Access Settings") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!) }
@@ -179,6 +194,7 @@ struct SettingsView: View {
             Section {
                 Toggle("Open at login", isOn: $login).onChange(of: login) { _, v in if v { try? SMAppService.mainApp.register() } else { try? SMAppService.mainApp.unregister() } }
                 Toggle("Show in the menu bar", isOn: $menuBar).onChange(of: menuBar) { _, v in Prefs.menuBar = v }
+                Toggle("⌥ Space brings the window forward", isOn: $hotkey).onChange(of: hotkey) { _, v in Prefs.hotkey = v; Hotkey.register() }
                 Toggle("Check for updates daily", isOn: $updates).onChange(of: updates) { _, v in Updates.enabled = v }
             }
         }.formStyle(.grouped).frame(width: 520, height: 520)
@@ -191,6 +207,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             UserDefaults.standard.set(true, forKey: "loginItemOffered"); try? SMAppService.mainApp.register()
         }
         Updates.scheduleBackgroundChecks()
+        Hotkey.onPress = {
+            if let w = NSApp.windows.first(where: { $0.title == "Ask for Mac" }), w.isKeyWindow, NSApp.isActive { w.orderOut(nil); NSApp.hide(nil) }
+            else { NSApp.activate(ignoringOtherApps: true); NSApp.windows.first { $0.title == "Ask for Mac" }?.makeKeyAndOrderFront(nil) }
+        }
+        if ProcessInfo.processInfo.environment["ASKMAC_HOME"] == nil { Hotkey.register() }
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { !Prefs.menuBar }
 }
