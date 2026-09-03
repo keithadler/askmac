@@ -6,7 +6,7 @@ Ask your Mac a question in your own words. Get the answer, and the file it came 
 
 ## Download
 
-**[Download Ask-for-Mac-0.8.0.dmg](https://github.com/keithadler/askmac/releases/latest/download/Ask-for-Mac-0.8.0.dmg)** (macOS 14 or later, Apple Silicon and Intel; written answers need macOS 26 with Apple Intelligence)
+**[Download Ask-for-Mac-1.0.0.dmg](https://github.com/keithadler/askmac/releases/latest/download/Ask-for-Mac-1.0.0.dmg)** (macOS 14 or later, Apple Silicon and Intel; written answers need macOS 26 with Apple Intelligence)
 
 Open the DMG, drag the app to Applications, open it. The first time, macOS says the app is from an unidentified developer: right-click the app, choose Open, then Open again. That is once. Nothing else to set up.
 
@@ -53,3 +53,12 @@ tests/integration.sh          # the command line end to end
 ```
 
 MIT licensed. See [PRIVACY.md](PRIVACY.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## More from the same maker
+
+Four more small apps built the same way: each does one thing, says exactly what it touches, and never phones home. Free, MIT licensed, no accounts. All five at [keithadler.github.io](https://keithadler.github.io).
+
+- [Permissions for Mac](https://github.com/keithadler/permsmac): every permission on your Mac on one screen, in plain English, with what changed since last week.
+- [Clip for Mac](https://github.com/keithadler/clipmac): a clipboard that remembers, with a stack you paste through one item at a time, and that refuses to record passwords.
+- [Tidy for Mac](https://github.com/keithadler/tidymac): cleanup and speed for the whole family; nothing is deleted, only moved to the Trash with an undoable receipt.
+- [Stash for Mac](https://github.com/keithadler/stashmac): encrypted backup into storage you already have; the provider only ever sees ciphertext.
