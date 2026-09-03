@@ -47,7 +47,7 @@
 </ul>
 
 <h2 id="where">What it searches</h2>
-<p>Documents, Desktop, Downloads and iCloud Drive by default; add or remove folders in Settings. Mail is included when Ask for Mac has Full Disk Access, which macOS requires for reading another app's mail store; without it, files still work.</p>
+<p>Documents, Desktop, Downloads and iCloud Drive by default; add or remove folders in Settings, and skip folders inside them that you never want searched (a folder of code repositories, say). Mail is included when Ask for Mac has Full Disk Access, which macOS requires for reading another app's mail store; without it, files still work.</p>
 <p><strong>Screenshots and photos</strong> are read with the Mac's own text recognition, but only when the question asks for a picture ("the screenshot of the wifi password", "photo of the receipt"), since reading every image for every question would be slow. Images matching the words in their name come first; failing that, the newest screenshots.</p>
 <p><strong>Apple Notes</strong> are read through the Notes app when a question mentions notes. macOS asks once whether Ask for Mac may control Notes; say yes and notes join the sources, with an Open in Notes button. Numbers, Pages and Keynote documents are not read in this version.</p>
 
@@ -68,7 +68,7 @@ askmac folders add ~/Projects</pre>
 
 <h2 id="trouble">Troubleshooting</h2>
 <h3>It finds nothing, but the file exists</h3>
-<p>Spotlight may not have indexed that folder yet, or indexing is off for it (System Settings › Spotlight › Search Privacy). Ask for Mac falls back to reading the folder directly when Spotlight returns nothing, which is slower but works.</p>
+<p>Spotlight may not have indexed that folder yet, or indexing is off for it (System Settings › Spotlight › Search Privacy). When indexing is off for a whole volume, the app says so under the question. Ask for Mac falls back to reading the folder directly when Spotlight returns nothing, which is slower but works.</p>
 <h3>The answer quotes a sentence instead of writing one</h3>
 <p>That is the mode without Apple Intelligence. The status line at the bottom says why: older macOS, an Intel Mac, Apple Intelligence off, or its model still downloading.</p>
 <h3>Mail is not included</h3>

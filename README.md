@@ -6,7 +6,7 @@ Ask your Mac a question in your own words. Get the answer, and the file it came 
 
 ## Download
 
-**[Download Ask-for-Mac-0.5.0.dmg](https://github.com/keithadler/askmac/releases/latest/download/Ask-for-Mac-0.5.0.dmg)** (macOS 14 or later, Apple Silicon and Intel; written answers need macOS 26 with Apple Intelligence)
+**[Download Ask-for-Mac-0.6.0.dmg](https://github.com/keithadler/askmac/releases/latest/download/Ask-for-Mac-0.6.0.dmg)** (macOS 14 or later, Apple Silicon and Intel; written answers need macOS 26 with Apple Intelligence)
 
 Open the DMG, drag the app to Applications, open it. The first time, macOS says the app is from an unidentified developer: right-click the app, choose Open, then Open again. That is once. Nothing else to set up.
 
@@ -26,7 +26,8 @@ Every answer lists its sources. An answer you cannot check is not an answer. Whi
 - It does not upload anything, anywhere, ever. No account, no server, no Private Cloud Compute.
 - It does not build a second index of your files. Spotlight's is the only one.
 - It does not read Numbers, Pages or Keynote yet; Apple keeps their text in a format nothing else can read. Images are read only when a question asks for a screenshot or photo, because recognising text in every picture for every question would be slow.
-- It does not answer from general knowledge. If it is not in your files, it says so.
+- It does not answer from general knowledge. If it is not in your files, it says so, and lists the closest files so you can look yourself.
+- Folders you do not want searched, a folder of source repositories inside Downloads say, can be skipped in Settings or with `askmac skip add <path>`.
 
 ## Command line
 

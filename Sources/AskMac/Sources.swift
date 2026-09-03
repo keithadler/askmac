@@ -90,9 +90,27 @@ enum Sources {
         default: return .text
         }
     }
-    /// Folders nobody means when they ask about "my files".
+    /// Folders nobody means when they ask about "my files", plus the ones the person chose to skip.
     static let skippedPathParts = ["/.git/", "/node_modules/", "/.build/", "/DerivedData/", "/Library/Caches/", "/.Trash/", "/Pods/", "/vendor/", "/dist/", "/target/"]
-    static func skipped(_ url: URL) -> Bool { skippedPathParts.contains { url.path.contains($0) } }
+    static func skipped(_ url: URL) -> Bool {
+        if skippedPathParts.contains(where: { url.path.contains($0) }) { return true }
+        let path = url.resolvingSymlinksInPath().path
+        return Prefs.skipped.contains { path.hasPrefix(URL(fileURLWithPath: $0).resolvingSymlinksInPath().path + "/") }
+    }
+
+    /// Runs mdutil -s; tests replace this. Returns the folders (of the searched ones) whose volume reports indexing disabled.
+    static var mdutil: (String) -> String = { path in
+        let p = Process(); p.executableURL = URL(fileURLWithPath: "/usr/bin/mdutil"); p.arguments = ["-s", path]
+        let pipe = Pipe(); p.standardOutput = pipe; p.standardError = pipe
+        do { try p.run() } catch { return "" }
+        let d = pipe.fileHandleForReading.readDataToEndOfFile(); p.waitUntilExit(); return String(decoding: d, as: UTF8.self)
+    }
+    static func spotlightOff() -> String? {
+        var volumes = Set<String>()
+        for f in folders { volumes.insert((try? f.resourceValues(forKeys: [.volumeURLKey]).volume?.path) ?? "/") }
+        let off = volumes.filter { mdutil($0).lowercased().contains("disabled") }.sorted()
+        return off.isEmpty ? nil : off.joined(separator: ", ")
+    }
 
     /// Images by name and date only: Spotlight has no text for most of them; OCR supplies it.
     static func imageQuery(_ q: Query) -> String {
@@ -139,7 +157,7 @@ enum Sources {
         let paths = filePaths + mailPaths + imagePaths
         var seen = Set<String>()
         var out: [Candidate] = []
-        for p in paths where seen.insert(p).inserted && !p.isEmpty {
+        for p in paths.prefix(400) where seen.insert(p).inserted && !p.isEmpty {
             let url = URL(fileURLWithPath: p)
             let k = kind(of: url)
             if skipped(url) { continue }
@@ -153,8 +171,13 @@ enum Sources {
             var c = Candidate(url: URL(fileURLWithPath: "/Notes/\(n.name.replacingOccurrences(of: "/", with: "-")).note"), kind: .note, modified: n.modified)
             c.text = n.name + "\n\n" + n.body; c.noteId = n.id; out.append(c)
         }
-        // Newest first among candidates; ranking will reorder by relevance.
-        return Array(out.sorted { ($0.modified ?? .distantPast) > ($1.modified ?? .distantPast) }.prefix(limit))
+        // When hundreds match, files whose names carry the words come first, then the newest;
+        // ranking reorders the survivors by relevance.
+        func nameHits(_ c: Candidate) -> Int { let n = (c.title ?? c.url.lastPathComponent).lowercased(); return q.terms.filter { n.contains($0) }.count }
+        return Array(out.sorted { a, b in
+            let ha = nameHits(a), hb = nameHits(b)
+            return ha != hb ? ha > hb : (a.modified ?? .distantPast) > (b.modified ?? .distantPast)
+        }.prefix(limit))
     }
 
     /// Fallback and tests: walk folders and keep files whose text contains every term.

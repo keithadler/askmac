@@ -79,6 +79,20 @@ enum PipelineSuite {
             t.equal(Sources.stem("stopped"), "stop", "double consonant"); t.equal(Sources.stem("paying"), "pay", "ing"); t.equal(Sources.stem("lease"), "lease", "short words untouched"); t.equal(Sources.stem("2025"), "2025", "numbers untouched")
             t.check(Sources.spotlightQuery(Query.parse("dentist invoices"), mail: false).contains("invoice*"), "stem used in query")
         },
+        TestCase(name: "skipped folders and Spotlight status") { t in
+            let dir = URL(fileURLWithPath: Prefs.folders!.first!); try seed(dir)
+            let repos = dir.appendingPathComponent("repos"); try FileManager.default.createDirectory(at: repos, withIntermediateDirectories: true)
+            try "Lease deposit test string in a README: $9,999.".write(to: repos.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
+            Prefs.skipped = [repos.path]
+            let a = ask("lease deposit")
+            t.check(!a.sources.contains { $0.passage.source.url.path.contains("/repos/") }, "skipped folder never appears")
+            t.check(Sources.skipped(repos.appendingPathComponent("x/y.txt")), "nested path skipped"); t.check(!Sources.skipped(dir.appendingPathComponent("y.txt")), "sibling not skipped")
+            Prefs.skipped = []
+            let saved = Sources.mdutil; defer { Sources.mdutil = saved }
+            Sources.mdutil = { _ in "/:\n\tIndexing enabled." }; t.check(Sources.spotlightOff() == nil, "enabled")
+            Sources.mdutil = { _ in "/:\n\tIndexing disabled." }; t.check(Sources.spotlightOff() != nil, "disabled reported")
+            t.equal(CLI.run("skip", ["add", repos.path]), 0, "skip add"); t.equal(Prefs.skipped.count, 1, "stored"); t.equal(CLI.run("skip", ["remove", repos.path]), 0, "skip remove"); t.equal(Prefs.skipped.count, 0, "removed")
+        },
         TestCase(name: "prompt for the on-device model is bounded and numbered") { t in
             let c = Candidate(url: URL(fileURLWithPath: "/tmp/x.txt"), kind: .text, modified: nil)
             let scored = (0..<10).map { i in Scored(passage: Passage(source: c, text: String(repeating: "word ", count: 600), index: i), score: 1, keyword: 1, meaning: 0) }

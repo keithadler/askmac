@@ -15,6 +15,8 @@ import FoundationModels
 
 struct Answer {
     enum How: String { case model, quote, none }
+    /// The model's own way of saying the passages did not contain it.
+    var declined: Bool { how == .model && text.lowercased().hasPrefix("the files i found do not answer") }
     var text: String
     var how: How
     var sources: [Scored]
@@ -46,8 +48,9 @@ enum Answerer {
 
     static func answer(_ q: Query, scored: [Scored], candidates: Int, useModel: Bool, started: Date, onPartial: ((String) -> Void)? = nil) async -> Answer {
         guard let top = scored.first else {
-            return Answer(text: "", how: .none, sources: [], elapsed: Date().timeIntervalSince(started), candidates: candidates,
-                          note: candidates == 0 ? "Nothing on this Mac matches those words." : "Files matched the words, but no passage answered the question.")
+            var note = candidates == 0 ? "Nothing on this Mac matches those words." : "Files matched the words, but no passage answered the question."
+            if candidates == 0, let off = Sources.spotlightOff() { note += " Spotlight indexing is off for \(off), so files there cannot be found." }
+            return Answer(text: "", how: .none, sources: [], elapsed: Date().timeIntervalSince(started), candidates: candidates, note: note)
         }
         if useModel, modelStatus().available, let written = await writeWithModel(q, scored: scored, onPartial: onPartial) {
             return Answer(text: written, how: .model, sources: scored, elapsed: Date().timeIntervalSince(started), candidates: candidates, note: nil)
@@ -73,7 +76,7 @@ enum Answerer {
         return p
     }
     static var modelTimeout: TimeInterval = 40
-    static let instructions = "You answer questions using only the numbered passages provided, which come from the person's own files. Answer in at most three plain sentences. After each fact, cite the passage number in square brackets like [1]. If the passages do not contain the answer, say exactly: The files I found do not answer that. Never invent names, numbers or dates."
+    static let instructions = "You answer questions using only the numbered passages provided, which come from the person's own files. Answer in at most three plain sentences, in the same language as the question. After each fact, cite the passage number in square brackets like [1]. If the passages do not contain the answer, say exactly: The files I found do not answer that. Never invent names, numbers or dates."
 
     static func writeWithModel(_ q: Query, scored: [Scored], onPartial: ((String) -> Void)? = nil) async -> String? {
         #if canImport(FoundationModels)
@@ -169,6 +172,7 @@ enum Prefs {
     static var folders: [String]? { get { defaults.stringArray(forKey: "folders") } set { defaults.set(newValue, forKey: "folders") } }
     static var useModel: Bool { get { defaults.object(forKey: "useModel") as? Bool ?? true } set { defaults.set(newValue, forKey: "useModel") } }
     static var includeMail: Bool { get { defaults.object(forKey: "includeMail") as? Bool ?? true } set { defaults.set(newValue, forKey: "includeMail") } }
+    static var skipped: [String] { get { defaults.stringArray(forKey: "skipped") ?? [] } set { defaults.set(newValue, forKey: "skipped") } }
     static var includeNotes: Bool { get { defaults.object(forKey: "includeNotes") as? Bool ?? true } set { defaults.set(newValue, forKey: "includeNotes") } }
     static var hotkey: Bool { get { defaults.object(forKey: "hotkey") as? Bool ?? true } set { defaults.set(newValue, forKey: "hotkey") } }
     static var menuBar: Bool { get { defaults.object(forKey: "menuBar") as? Bool ?? true } set { defaults.set(newValue, forKey: "menuBar") } }

@@ -13,6 +13,7 @@ enum CLI {
       askmac "<question>" [--json] [--quote] [--limit N]   answer with sources; --quote skips the on-device model
       askmac status [--json]                                 folders searched, Spotlight, Apple Intelligence
       askmac folders [add|remove <path>]                     which folders are searched
+      askmac skip [add|remove <path>]                        folders inside those that are never searched
       askmac screenshots <dir> [--announce]                  render windows and promo cards from demo data
       askmac selftest [--filter S] [--list] [--json]
       askmac help | version
@@ -70,17 +71,24 @@ enum CLI {
         case "version", "--version": out("askmac \(version)"); return 0
         case "status":
             let m = Answerer.modelStatus()
-            let d: [String: Any] = ["folders": Sources.folders.map(\.path), "mail": Prefs.includeMail && FileManager.default.isReadableFile(atPath: Sources.mailFolder.path), "appleIntelligence": m.available, "modelNote": m.why, "spotlight": Ask.useSpotlight, "version": version]
+            let d: [String: Any] = ["folders": Sources.folders.map(\.path), "skipped": Prefs.skipped, "spotlightOff": Sources.spotlightOff() ?? "", "mail": Prefs.includeMail && FileManager.default.isReadableFile(atPath: Sources.mailFolder.path), "appleIntelligence": m.available, "modelNote": m.why, "spotlight": Ask.useSpotlight, "version": version]
             if js { out(json(d)) } else {
                 out("Folders: " + Sources.folders.map { $0.path.replacingOccurrences(of: FileManager.default.homeDirectoryForCurrentUser.path, with: "~") }.joined(separator: ", "))
                 out("Mail: " + ((d["mail"] as? Bool) == true ? "included" : "not readable (Full Disk Access) or turned off"))
                 out(m.why)
+                if let off = Sources.spotlightOff() { out("Spotlight indexing is off for \(off); files there cannot be found.") }
             }
             return 0
         case "folders":
             if pos.first == "add", pos.count > 1 { var f = Prefs.folders ?? Sources.folders.map(\.path); f.append(URL(fileURLWithPath: pos[1]).standardizedFileURL.path); Prefs.folders = f }
             if pos.first == "remove", pos.count > 1 { Prefs.folders = (Prefs.folders ?? Sources.folders.map(\.path)).filter { $0 != URL(fileURLWithPath: pos[1]).standardizedFileURL.path } }
             for f in Sources.folders { out(f.path) }
+            return 0
+        case "skip":
+            if pos.first == "add", pos.count > 1 { Prefs.skipped = Array(Set(Prefs.skipped + [URL(fileURLWithPath: pos[1]).standardizedFileURL.path])).sorted() }
+            if pos.first == "remove", pos.count > 1 { Prefs.skipped = Prefs.skipped.filter { $0 != URL(fileURLWithPath: pos[1]).standardizedFileURL.path } }
+            for f in Prefs.skipped { out(f) }
+            if Prefs.skipped.isEmpty { out("Nothing skipped beyond the usual (.git, node_modules, caches, Trash).") }
             return 0
         case "screenshots":
             guard let dir = pos.first else { err("askmac screenshots <dir>\n"); return 64 }
@@ -103,7 +111,7 @@ enum CLI {
             else {
                 if a.how == .none { out(a.note ?? "Nothing found."); return 1 }
                 out(a.how == .quote ? "“\(a.text)”" : a.text)
-                out("")
+                out(a.declined ? "\nClosest matches:" : "")
                 var seen = Set<URL>()
                 for (i, s) in a.sources.enumerated() where seen.insert(s.passage.source.url).inserted || a.how == .model {
                     let when = s.passage.source.modified.map { " · " + $0.formatted(date: .abbreviated, time: .omitted) } ?? ""

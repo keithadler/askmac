@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0 — 2026-09-03
+
+Skip folders inside the searched ones (Settings, or `askmac skip add`). When Spotlight indexing is off for a volume, the app says so instead of finding nothing silently. When hundreds of files match, the ones whose names carry the words come first. Answers come in the language of the question. When the model says the files do not answer, the list is labelled "Closest matches".
+
 ## 0.5.0 — 2026-09-03
 
 Files read during a session are kept in memory (capped) so follow-ups skip the reading phase; a changed file is read again. Follow-ups hand the model the earlier question and answer so "it" resolves. Mail is searched by default whenever it is readable, not only when a question says "email". Light stemming, so "invoices" finds "invoice" and "paying" finds "pay".

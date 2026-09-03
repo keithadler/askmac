@@ -145,7 +145,8 @@ struct AnswerView: View {
                     Text(answer.how == .quote ? "“\(answer.text)”" : answer.text).font(.title3).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                     if answer.how == .quote, let s = answer.sources.first { Text("Quoted from \(s.passage.title)").font(.caption).foregroundStyle(.secondary) }
                 }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
-                Text("Sources").font(.headline)
+                Text(answer.declined ? "Closest matches" : "Sources").font(.headline)
+                if answer.declined { Text("These files matched the words but did not contain the answer. Try other words, or open one to look yourself.").font(.callout).foregroundStyle(.secondary) }
                 VStack(spacing: 0) {
                     ForEach(Array(answer.sources.enumerated()), id: \.element) { i, s in
                         SourceRow(number: i + 1, scored: s)
@@ -195,6 +196,7 @@ struct SourceRow: View {
 struct SettingsView: View {
     @EnvironmentObject var model: AskModel
     @State private var folders = Sources.folders
+    @State private var skipped = Prefs.skipped
     @State private var useModel = Prefs.useModel
     @State private var includeMail = Prefs.includeMail
     @State private var includeNotes = Prefs.includeNotes
@@ -210,6 +212,12 @@ struct SettingsView: View {
                 Button("Add Folder…") {
                     let p = NSOpenPanel(); p.canChooseDirectories = true; p.canChooseFiles = false
                     if p.runModal() == .OK, let u = p.url { folders.append(u); Prefs.folders = folders.map(\.path) }
+                }
+                Text("Skipped inside those").font(.caption).foregroundStyle(.secondary)
+                ForEach(skipped, id: \.self) { f in HStack { Text(f.replacingOccurrences(of: FileManager.default.homeDirectoryForCurrentUser.path, with: "~")).foregroundStyle(.secondary); Spacer(); Button("Unskip") { skipped.removeAll { $0 == f }; Prefs.skipped = skipped } } }
+                Button("Skip a Folder…") {
+                    let p = NSOpenPanel(); p.canChooseDirectories = true; p.canChooseFiles = false; p.message = "Files in this folder will never be searched."
+                    if p.runModal() == .OK, let u = p.url { skipped.append(u.path); Prefs.skipped = skipped }
                 }
                 Toggle("Include Mail", isOn: $includeMail).onChange(of: includeMail) { _, v in Prefs.includeMail = v }
                 Toggle("Include Apple Notes when a question mentions notes", isOn: $includeNotes).onChange(of: includeNotes) { _, v in Prefs.includeNotes = v }
