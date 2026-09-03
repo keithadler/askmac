@@ -25,8 +25,9 @@ enum Sources {
     }
     /// "Documents/Taxes" rather than a full path: relative to the searched folder when inside one, else ~.
     static func displayPath(_ url: URL) -> String {
-        for f in folders where url.path.hasPrefix(f.path) {
-            let rest = url.path.dropFirst(f.path.count)
+        let path = url.resolvingSymlinksInPath().path     // /var vs /private/var
+        for f in folders.map({ $0.resolvingSymlinksInPath() }) where path.hasPrefix(f.path) {
+            let rest = path.dropFirst(f.path.count)
             return f.lastPathComponent + (rest.isEmpty ? "" : String(rest))
         }
         if url.path.hasPrefix(mailFolder.path) { return "Mail" }

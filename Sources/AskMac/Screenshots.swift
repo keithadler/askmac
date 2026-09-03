@@ -16,7 +16,7 @@ enum Screenshots {
         let tmp = TestKit.tempDir(); defer { try? FileManager.default.removeItem(at: tmp) }
         Prefs.defaults = UserDefaults(suiteName: "com.keithadler.askmac.screenshots")!
         Prefs.defaults.removePersistentDomain(forName: "com.keithadler.askmac.screenshots")
-        Prefs.folders = [tmp.path]; Ask.useSpotlight = false
+        Prefs.folders = [tmp.appendingPathComponent("Documents").path]; Ask.useSpotlight = false
         defer { Prefs.defaults = .standard; Ask.useSpotlight = true }
         try Demo.write(tmp)
         let model = AskModel.shared
@@ -26,7 +26,7 @@ enum Screenshots {
         var written: [URL] = []
         for (suffix, appearance) in [("", NSAppearance.Name.darkAqua), ("-light", .aqua)] {
             app.appearance = NSAppearance(named: appearance)
-            for (name, question, demoAnswer) in [("answer", "how much was the lease deposit", "The security deposit on the Woodland Ave lease is $2,400, due at signing, with rent of $1,950 a month [1]. The landlord confirmed receipt on August 14 [2]."),
+            for (name, question, demoAnswer) in [("answer", "how much was the lease deposit", "The security deposit on the Woodland Ave lease is $2,400, due at signing, with rent of $1,950 a month [2]. The landlord confirmed receipt of it on August 14 [1]."),
                                                  ("empty", "", nil as String?)] {
                 model.question = question; model.answer = nil
                 if !question.isEmpty {
