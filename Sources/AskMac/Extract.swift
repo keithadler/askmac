@@ -39,14 +39,15 @@ enum Extract {
     }
 
     /// Page by page, stopping once there is enough: PDFDocument.string on a 400-page manual took seconds.
-    static func pdf(_ url: URL) -> String? {
+    static func pdf(_ url: URL) -> String? { pdfPages(url)?.joined(separator: "\n") }
+    static func pdfPages(_ url: URL) -> [String]? {
         guard let doc = PDFDocument(url: url) else { return nil }
-        var out = ""
+        var out: [String] = []; var total = 0
         for i in 0..<min(doc.pageCount, 120) {
-            if let s = doc.page(at: i)?.string { out += s + "\n" }
-            if out.count > maxChars { break }
+            let s = doc.page(at: i)?.string ?? ""; out.append(s); total += s.count
+            if total > maxChars { break }
         }
-        return out
+        return out.allSatisfy({ $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) ? nil : out
     }
 
     /// Office files are zips of XML; the text is what is left after the tags. Uses the system unzip.

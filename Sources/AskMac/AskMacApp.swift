@@ -6,6 +6,7 @@ import SwiftUI
 import AppKit
 import ServiceManagement
 import Quartz
+import QuickLook
 
 @main
 struct AskMacApp: App {
@@ -18,6 +19,10 @@ struct AskMacApp: App {
         }
         .windowResizability(.contentSize)
         .commands {
+            CommandGroup(after: .pasteboard) {
+                Button("Copy Answer with Sources") { AskModel.shared.copyAnswer() }.keyboardShortcut("c", modifiers: [.command, .shift])
+                ForEach(1..<10, id: \.self) { n in Button("Open Source \(n)") { AskModel.shared.openSource(n) }.keyboardShortcut(KeyEquivalent(Character("\(n)")), modifiers: .command) }
+            }
             CommandGroup(replacing: .help) {
                 Button("Ask for Mac Help") { Help.open() }
                 Button("Check for Updates…") { Updates.checkAndPresent() }
@@ -46,12 +51,29 @@ final class AskModel: ObservableObject {
     @Published var history = Prefs.history
     @Published var modelNote = Answerer.modelStatus().why
     @Published var modelAvailable = Answerer.modelStatus().available
+    private var task: Task<Void, Never>?
+    func stop() { task?.cancel(); task = nil; busy = false; status = ""; partial = ""; if answer == nil { answer = Answer(text: "", how: .none, sources: [], elapsed: 0, candidates: 0, note: "Stopped.") } }
+    func openSource(_ n: Int) {
+        guard let a = answer, n >= 1, n <= a.sources.count else { return }
+        let s = a.sources[n - 1]
+        if let id = s.passage.source.noteId { Notes.show(id: id) } else { NSWorkspace.shared.open(s.passage.source.url) }
+    }
+    func copyAnswer() {
+        guard let a = answer, a.how != .none else { return }
+        var text = a.text + "\n"
+        var seen = Set<URL>()
+        for (i, s) in a.sources.enumerated() where seen.insert(s.passage.source.url).inserted || a.how == .model {
+            text += "\n[\(i + 1)] \(s.passage.title)\(s.passage.page.map { ", page \($0)" } ?? "") — \(s.passage.source.noteId != nil ? "Apple Notes" : s.passage.source.url.path)"
+        }
+        NSPasteboard.general.clearContents(); NSPasteboard.general.setString(text, forType: .string)
+    }
     func ask() {
         let q = question.trimmingCharacters(in: .whitespaces); guard q.count > 2, !busy else { return }
         busy = true; answer = nil; partial = ""; status = "Finding files…"
         if Prefs.keepHistory { var h = Prefs.history.filter { $0 != q }; h.append(q); Prefs.history = h; history = Prefs.history }
-        Task {
+        task = Task {
             let a = await Ask.run(q, progress: { s in Task { @MainActor in self.status = s } }, onPartial: { p in Task { @MainActor in self.partial = p } })
+            if Task.isCancelled { return }
             self.answer = a; self.busy = false; self.status = ""
         }
     }
@@ -66,7 +88,8 @@ struct MainView: View {
                 Image(systemName: "questionmark.bubble").font(.title2).foregroundStyle(.secondary)
                 TextField(model.answer == nil ? "Ask about your files, in your own words" : "Ask a follow-up, or something new", text: $model.question).textFieldStyle(.plain).font(.title2).focused($focused).onSubmit { model.ask() }
                     .onExitCommand { model.question = "" }
-                if model.busy { ProgressView().controlSize(.small) } else { Button("Ask") { model.ask() }.keyboardShortcut(.defaultAction).disabled(model.question.count < 3) }
+                if model.busy { ProgressView().controlSize(.small); Button("Stop") { model.stop() }.keyboardShortcut(".", modifiers: .command) }
+                else { Button("Ask") { model.ask() }.keyboardShortcut(.defaultAction).disabled(model.question.count < 3) }
             }.padding(18)
             Divider()
             ScrollView {
@@ -139,6 +162,7 @@ struct SourceRow: View {
     let number: Int
     let scored: Scored
     @State private var expanded = false
+    @State private var quickLook: URL?
     var body: some View {
         let url = scored.passage.source.url
         VStack(alignment: .leading, spacing: 6) {
@@ -146,13 +170,17 @@ struct SourceRow: View {
                 Text("\(number)").font(.caption.bold()).frame(width: 18, height: 18).background(.secondary.opacity(0.2), in: Circle())
                 Image(nsImage: scored.passage.source.noteId != nil ? (NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Notes").map { NSWorkspace.shared.icon(forFile: $0.path) } ?? NSWorkspace.shared.icon(forFile: url.path)) : NSWorkspace.shared.icon(forFile: url.path)).resizable().frame(width: 28, height: 28)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(scored.passage.title).font(.body.weight(.medium))
+                    HStack(spacing: 6) {
+                        Text(scored.passage.title).font(.body.weight(.medium))
+                        if let page = scored.passage.page { Text("page \(page)").font(.caption).padding(.horizontal, 5).padding(.vertical, 1).background(.secondary.opacity(0.15), in: Capsule()) }
+                    }
                     Text([scored.passage.source.modified.map { $0.formatted(date: .abbreviated, time: .omitted) }, Sources.displayPath(url.deletingLastPathComponent())].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                 }
                 Spacer()
                 if let id = scored.passage.source.noteId { Button("Open in Notes") { Notes.show(id: id) } }
                 else {
                     Button("Open") { NSWorkspace.shared.open(url) }
+                    Button { quickLook = url } label: { Image(systemName: "eye") }.help("Quick Look")
                     Button { NSWorkspace.shared.activateFileViewerSelecting([url]) } label: { Image(systemName: "folder") }.help("Show in Finder")
                 }
                 Button { expanded.toggle() } label: { Image(systemName: expanded ? "chevron.up" : "chevron.down") }.help("Show the passage")
@@ -160,6 +188,7 @@ struct SourceRow: View {
             if expanded { Text(scored.passage.text).font(.callout).textSelection(.enabled).padding(.leading, 56).foregroundStyle(.secondary) }
             else { Text(Passages.bestSentence(Query.parse(AskModel.shared.question).terms, in: scored.passage.text)).font(.callout).lineLimit(2).padding(.leading, 56).foregroundStyle(.secondary) }
         }.padding(.horizontal, 12).padding(.vertical, 8)
+        .quickLookPreview($quickLook)
     }
 }
 

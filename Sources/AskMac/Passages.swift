@@ -12,6 +12,7 @@ struct Passage: Hashable {
     let source: Candidate
     let text: String
     let index: Int
+    var page: Int? = nil       // PDFs: 1-based page the passage starts on
     var title: String { source.title ?? source.url.deletingPathExtension().lastPathComponent }
 }
 
@@ -19,6 +20,15 @@ struct Scored: Hashable { let passage: Passage; let score: Double; let keyword: 
 
 enum Passages {
     static let targetWords = 180
+
+    /// PDFs page by page, so a source can say "page 12".
+    static func split(pages: [String], source: Candidate) -> [Passage] {
+        var out: [Passage] = []
+        for (i, page) in pages.enumerated() {
+            for p in split(page, source: source) { out.append(Passage(source: source, text: p.text, index: out.count, page: i + 1)) }
+        }
+        return out
+    }
 
     static func split(_ text: String, source: Candidate) -> [Passage] {
         let paragraphs = text.components(separatedBy: CharacterSet.newlines).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }

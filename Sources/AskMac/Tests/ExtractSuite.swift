@@ -25,6 +25,19 @@ enum ExtractSuite {
             NSGraphicsContext.current = nil; ctx.endPDFPage(); ctx.closePDF()
             try (data as Data).write(to: dir.appendingPathComponent("f.pdf"))
             t.check(Extract.text(from: dir.appendingPathComponent("f.pdf"))?.contains("crown 1150") == true, "pdf text: \(Extract.text(from: dir.appendingPathComponent("f.pdf")) ?? "nil")")
+            // Two pages: passages carry their page number.
+            let two = PDFDocument(); two.insert(PDFPage(), at: 0); two.insert(PDFPage(), at: 1)
+            let d2 = NSMutableData(); let con2 = CGDataConsumer(data: d2 as CFMutableData)!; var box2 = CGRect(x: 0, y: 0, width: 400, height: 300)
+            let c2 = CGContext(consumer: con2, mediaBox: &box2, nil)!
+            for (i, line) in ["Page one talks about the lease.", "Page two says the deposit is 2400."].enumerated() {
+                c2.beginPDFPage(nil); NSGraphicsContext.current = NSGraphicsContext(cgContext: c2, flipped: false)
+                NSAttributedString(string: line, attributes: [.font: NSFont.systemFont(ofSize: 14)]).draw(at: NSPoint(x: 20, y: 200)); NSGraphicsContext.current = nil; c2.endPDFPage(); _ = i
+            }
+            c2.closePDF(); try (d2 as Data).write(to: dir.appendingPathComponent("two.pdf"))
+            let pages = Extract.pdfPages(dir.appendingPathComponent("two.pdf")); t.equal(pages?.count, 2, "two pages")
+            let ps = Passages.split(pages: pages ?? [], source: Candidate(url: dir.appendingPathComponent("two.pdf"), kind: .pdf, modified: nil))
+            t.equal(ps.map { $0.page }, [1, 2], "page numbers on passages")
+            t.check(ps.last?.text.contains("2400") == true, "second page text")
             let empty = try write("empty.txt", "   ", in: dir); t.check(Extract.text(from: empty) == nil, "empty is nil")
             try Data([0, 1, 2, 3, 255, 254]).write(to: dir.appendingPathComponent("g.bin")); t.check(Extract.text(from: dir.appendingPathComponent("g.bin")) == nil, "binary is nil")
         },

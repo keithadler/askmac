@@ -57,7 +57,7 @@ enum CLI {
     }
 
     static func sourceDict(_ s: Scored) -> [String: Any] {
-        var d: [String: Any] = ["file": s.passage.source.url.path, "title": s.passage.title, "kind": s.passage.source.kind.rawValue, "score": (s.score * 1000).rounded() / 1000, "passage": s.passage.text]
+        var d: [String: Any] = ["file": s.passage.source.url.path, "title": s.passage.title, "page": s.passage.page ?? 0, "kind": s.passage.source.kind.rawValue, "score": (s.score * 1000).rounded() / 1000, "passage": s.passage.text]
         if let m = s.passage.source.modified { d["modified"] = ISO8601DateFormatter().string(from: m) }
         return d
     }
@@ -107,7 +107,7 @@ enum CLI {
                 var seen = Set<URL>()
                 for (i, s) in a.sources.enumerated() where seen.insert(s.passage.source.url).inserted || a.how == .model {
                     let when = s.passage.source.modified.map { " · " + $0.formatted(date: .abbreviated, time: .omitted) } ?? ""
-                    out("[\(i + 1)] \(s.passage.title)\(when)\n    \(s.passage.source.url.path)")
+                    out("[\(i + 1)] \(s.passage.title)\(s.passage.page.map { ", page \($0)" } ?? "")\(when)\n    \(s.passage.source.noteId != nil ? "Apple Notes" : s.passage.source.url.path)")
                 }
                 out(String(format: "\n%d files considered, %.1f s%@", a.candidates, a.elapsed, a.how == .quote ? ", quoted (no on-device model)" : ""))
             }

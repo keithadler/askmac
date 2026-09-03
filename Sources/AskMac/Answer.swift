@@ -68,20 +68,33 @@ enum Answerer {
         }
         return p
     }
+    static var modelTimeout: TimeInterval = 40
     static let instructions = "You answer questions using only the numbered passages provided, which come from the person's own files. Answer in at most three plain sentences. After each fact, cite the passage number in square brackets like [1]. If the passages do not contain the answer, say exactly: The files I found do not answer that. Never invent names, numbers or dates."
 
     static func writeWithModel(_ q: Query, scored: [Scored], onPartial: ((String) -> Void)? = nil) async -> String? {
         #if canImport(FoundationModels)
         if #available(macOS 26.0, *) {
-            do {
-                let session = LanguageModelSession(instructions: instructions)
-                var last = ""
-                for try await partial in session.streamResponse(to: prompt(q, scored: scored)) {
-                    last = partial.content; onPartial?(last)
+            // Race the model against a clock: a stuck model must never hang the window. The caller
+            // falls back to a quoted sentence when this returns nil.
+            let p = prompt(q, scored: scored)
+            return await withTaskGroup(of: String?.self) { group in
+                group.addTask {
+                    do {
+                        let session = LanguageModelSession(instructions: instructions)
+                        var last = ""
+                        for try await partial in session.streamResponse(to: p) {
+                            if Task.isCancelled { return nil }
+                            last = partial.content; onPartial?(last)
+                        }
+                        let text = last.trimmingCharacters(in: .whitespacesAndNewlines)
+                        return text.isEmpty ? nil : text
+                    } catch { return nil }
                 }
-                let text = last.trimmingCharacters(in: .whitespacesAndNewlines)
-                return text.isEmpty ? nil : text
-            } catch { return nil }
+                group.addTask { try? await Task.sleep(nanoseconds: UInt64(modelTimeout * 1_000_000_000)); return nil }
+                let first = await group.next() ?? nil
+                group.cancelAll()
+                return first
+            }
         }
         #endif
         return nil
@@ -123,7 +136,10 @@ enum Ask {
         let lock = NSLock()
         DispatchQueue.concurrentPerform(iterations: toRead.count) { i in
             autoreleasepool {
-                if let t = toRead[i].text ?? Extract.text(from: toRead[i].url) {
+                if Task.isCancelled { return }
+                if toRead[i].kind == .pdf, let pages = Extract.pdfPages(toRead[i].url) {
+                    let p = Passages.split(pages: pages, source: toRead[i]); lock.lock(); perFile[i] = p; lock.unlock()
+                } else if let t = toRead[i].text ?? Extract.text(from: toRead[i].url) {
                     var c = toRead[i]
                     if c.kind == .mail, let subject = t.split(separator: "\n").first, !subject.isEmpty { c.title = String(subject) }   // "Roof estimate", not "12345"
                     let p = Passages.split(t, source: c); lock.lock(); perFile[i] = p; lock.unlock()
@@ -132,6 +148,7 @@ enum Ask {
         }
         let passages = perFile.flatMap { $0 }
         lap("read")
+        if Task.isCancelled { return Answer(text: "", how: .none, sources: [], elapsed: Date().timeIntervalSince(started), candidates: cands.count, note: "Stopped.") }
         progress?("Ranking \(passages.count) passages…")
         let scored = Passages.rank(q, passages: passages, limit: limit)
         lap("rank")

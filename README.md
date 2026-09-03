@@ -6,7 +6,7 @@ Ask your Mac a question in your own words. Get the answer, and the file it came 
 
 ## Download
 
-**[Download Ask-for-Mac-0.3.0.dmg](https://github.com/keithadler/askmac/releases/latest/download/Ask-for-Mac-0.3.0.dmg)** (macOS 14 or later, Apple Silicon and Intel; written answers need macOS 26 with Apple Intelligence)
+**[Download Ask-for-Mac-0.4.0.dmg](https://github.com/keithadler/askmac/releases/latest/download/Ask-for-Mac-0.4.0.dmg)** (macOS 14 or later, Apple Silicon and Intel; written answers need macOS 26 with Apple Intelligence)
 
 Open the DMG, drag the app to Applications, open it. The first time, macOS says the app is from an unidentified developer: right-click the app, choose Open, then Open again. That is once. Nothing else to set up.
 

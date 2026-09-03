@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0 — 2026-09-03
+
+PDF sources say which page. Quick Look on any source (the eye button). ⌘1 to ⌘9 open a source, ⇧⌘C copies the answer with its sources, ⌘. stops a question. Apple's model is raced against a 40-second clock and the answer falls back to a quoted sentence if it loses, so nothing can hang the window.
+
 ## 0.3.0 — 2026-09-03
 
 Follow-up questions carry the previous question's words, dates and scope ("and when is rent due"), and a short question that finds nothing is retried as a follow-up. Excel and PowerPoint files are read. Mail sources show their subject instead of a file number. Very long PDFs stop after 120 pages. The status line says when Mail is left out for lack of Full Disk Access, with the pane one click away. Escape clears the question.
