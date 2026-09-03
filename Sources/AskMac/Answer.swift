@@ -58,6 +58,7 @@ enum Answerer {
 
     static func prompt(_ q: Query, scored: [Scored]) -> String {
         var p = "Question: \(q.text)\n\nPassages from the person's own files, numbered:\n"
+        // "Roof estimate (Sam Rivera, Sep 1)" tells the model what a mail passage is.
         var budget = 9000   // characters; the on-device model's window is small
         for (i, s) in scored.enumerated() {
             let t = s.passage.text.count > 1500 ? String(s.passage.text.prefix(1500)) : s.passage.text
@@ -90,11 +91,28 @@ enum Answerer {
 /// The whole pipeline in one call, used by the window and the command line alike.
 enum Ask {
     static var useSpotlight = true
+    /// The previous question, so "and when is rent due?" keeps looking at the lease.
+    static var previous: Query?
+    static func followUp(_ q: Query, after prev: Query?, force: Bool = false) -> Query {
+        guard let prev else { return q }
+        let lower = q.text.lowercased()
+        let explicit = lower.hasPrefix("and ") || lower.hasPrefix("what about") || lower.hasPrefix("how about") || lower.contains(" it ") || lower.hasSuffix(" it") || lower.contains(" that ") || lower.contains(" same ")
+        guard explicit || force else { return q }
+        var merged = q
+        merged.terms = Array((prev.terms + q.terms).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }.prefix(6))
+        if merged.since == nil { merged.since = prev.since; merged.until = prev.until }
+        if merged.kinds.isEmpty { merged.kinds = prev.kinds }
+        if merged.scopes == [.files], prev.scopes != [.files] { merged.scopes = prev.scopes }
+        merged.text = prev.text + " — " + q.text
+        return merged
+    }
+
     static func run(_ text: String, useModel: Bool = Prefs.useModel, limit: Int = 8, progress: ((String) -> Void)? = nil, onPartial: ((String) -> Void)? = nil) async -> Answer {
         let started = Date(); var phases: [String: Double] = [:]; var mark = Date()
         progress?("Finding files…")
         func lap(_ name: String) { phases[name] = (Date().timeIntervalSince(mark) * 100).rounded() / 100; mark = Date() }
-        let q = Query.parse(text)
+        let q = followUp(Query.parse(text), after: previous)
+        previous = q
         var cands = useSpotlight ? Sources.candidates(for: q) : Sources.walk(q, folders: Sources.folders)
         if cands.isEmpty, useSpotlight, !q.terms.isEmpty { cands = Sources.walk(q, folders: Sources.folders, limit: 20) }   // Spotlight off or behind
         lap("find")
@@ -105,7 +123,11 @@ enum Ask {
         let lock = NSLock()
         DispatchQueue.concurrentPerform(iterations: toRead.count) { i in
             autoreleasepool {
-                if let t = toRead[i].text ?? Extract.text(from: toRead[i].url) { let p = Passages.split(t, source: toRead[i]); lock.lock(); perFile[i] = p; lock.unlock() }
+                if let t = toRead[i].text ?? Extract.text(from: toRead[i].url) {
+                    var c = toRead[i]
+                    if c.kind == .mail, let subject = t.split(separator: "\n").first, !subject.isEmpty { c.title = String(subject) }   // "Roof estimate", not "12345"
+                    let p = Passages.split(t, source: c); lock.lock(); perFile[i] = p; lock.unlock()
+                }
             }
         }
         let passages = perFile.flatMap { $0 }

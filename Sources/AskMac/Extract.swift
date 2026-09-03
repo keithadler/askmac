@@ -19,7 +19,9 @@ enum Extract {
         let ext = url.pathExtension.lowercased()
         var out: String?
         switch ext {
-        case "pdf": out = PDFDocument(url: url)?.string
+        case "pdf": out = pdf(url)
+        case "xlsx": out = zipXML(url, members: ["xl/sharedStrings.xml"], also: "xl/worksheets/sheet1.xml")
+        case "pptx": out = zipXML(url, members: [], also: "ppt/slides/slide*.xml")
         case "emlx", "eml": out = mail(from: url).map { "\($0.subject)\nFrom: \($0.from)\nTo: \($0.to)\n\n\($0.body)" }
         case "rtf", "rtfd", "doc", "docx", "html", "htm", "odt", "webarchive":
             out = (try? NSAttributedString(url: url, options: [:], documentAttributes: nil))?.string
@@ -34,6 +36,34 @@ enum Extract {
         guard var s = out?.trimmingCharacters(in: .whitespacesAndNewlines), !s.isEmpty else { return nil }
         if s.count > maxChars { s = String(s.prefix(maxChars)) }
         return s
+    }
+
+    /// Page by page, stopping once there is enough: PDFDocument.string on a 400-page manual took seconds.
+    static func pdf(_ url: URL) -> String? {
+        guard let doc = PDFDocument(url: url) else { return nil }
+        var out = ""
+        for i in 0..<min(doc.pageCount, 120) {
+            if let s = doc.page(at: i)?.string { out += s + "\n" }
+            if out.count > maxChars { break }
+        }
+        return out
+    }
+
+    /// Office files are zips of XML; the text is what is left after the tags. Uses the system unzip.
+    static func zipXML(_ url: URL, members: [String], also: String?) -> String? {
+        let p = Process(); p.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+        p.arguments = ["-p", url.path] + members + (also.map { [$0] } ?? [])
+        let pipe = Pipe(); p.standardOutput = pipe; p.standardError = FileHandle.nullDevice
+        do { try p.run() } catch { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile(); p.waitUntilExit()
+        guard let xml = String(data: data, encoding: .utf8) else { return nil }
+        // Paragraph and cell boundaries become newlines so passages split sensibly; every other tag goes.
+        let text = xml.replacingOccurrences(of: "</(a:p|si|row|p:sp)>", with: "\n", options: .regularExpression)
+            .replacingOccurrences(of: "</(a:t|t|c)>", with: " ", options: .regularExpression)
+            .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+            .replacingOccurrences(of: "&amp;", with: "&").replacingOccurrences(of: "&lt;", with: "<").replacingOccurrences(of: "&gt;", with: ">").replacingOccurrences(of: "&quot;", with: "\"").replacingOccurrences(of: "&apos;", with: "'")
+            .replacingOccurrences(of: "[ \\t]+", with: " ", options: .regularExpression)
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     static func plain(_ url: URL) -> String? {

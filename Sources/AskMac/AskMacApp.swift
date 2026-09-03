@@ -64,7 +64,8 @@ struct MainView: View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 Image(systemName: "questionmark.bubble").font(.title2).foregroundStyle(.secondary)
-                TextField("Ask about your files, in your own words", text: $model.question).textFieldStyle(.plain).font(.title2).focused($focused).onSubmit { model.ask() }
+                TextField(model.answer == nil ? "Ask about your files, in your own words" : "Ask a follow-up, or something new", text: $model.question).textFieldStyle(.plain).font(.title2).focused($focused).onSubmit { model.ask() }
+                    .onExitCommand { model.question = "" }
                 if model.busy { ProgressView().controlSize(.small) } else { Button("Ask") { model.ask() }.keyboardShortcut(.defaultAction).disabled(model.question.count < 3) }
             }.padding(18)
             Divider()
@@ -82,6 +83,9 @@ struct MainView: View {
             HStack {
                 Image(systemName: model.modelAvailable ? "cpu" : "quote.opening").foregroundStyle(.secondary)
                 Text(model.modelNote).font(.caption).foregroundStyle(.secondary)
+                if Prefs.includeMail, !FileManager.default.isReadableFile(atPath: Sources.mailFolder.path) {
+                    Button("Mail not included") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!) }.buttonStyle(.link).font(.caption).help("Reading Mail needs Full Disk Access. Click to open the pane.")
+                }
                 Spacer()
                 Text("Nothing leaves this Mac.").font(.caption).foregroundStyle(.secondary)
             }.padding(.horizontal, 18).padding(.vertical, 8)

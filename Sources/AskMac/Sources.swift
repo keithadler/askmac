@@ -12,6 +12,7 @@ struct Candidate: Hashable {
     let modified: Date?
     var text: String? = nil       // already-known content (Apple Notes); files are read on demand
     var noteId: String? = nil
+    var title: String? = nil      // mail subject, note name; files use their name
     var isMail: Bool { kind == .mail }
 }
 

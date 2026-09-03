@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0 — 2026-09-03
+
+Follow-up questions carry the previous question's words, dates and scope ("and when is rent due"), and a short question that finds nothing is retried as a follow-up. Excel and PowerPoint files are read. Mail sources show their subject instead of a file number. Very long PDFs stop after 120 pages. The status line says when Mail is left out for lack of Full Disk Access, with the pane one click away. Escape clears the question.
+
 ## 0.2.0 — 2026-09-03
 
 The window says what it is doing and the answer streams in as it is written. Screenshots and photos are read with on-device text recognition when a question asks for them. Apple Notes are read through the Notes app when a question mentions notes. ⌥ Space brings the window forward.

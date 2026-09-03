@@ -50,6 +50,21 @@ enum ExtractSuite {
             let text = Extract.text(from: dir.appendingPathComponent("Screenshot 2026-09-01.png"))
             t.check(text?.lowercased().contains("sunflower42") == true, "ocr text: \(text ?? "nil")")
         },
+        TestCase(name: "xlsx and pptx: text out of the zip") { t in
+            let dir = TestKit.tempDir(); defer { try? FileManager.default.removeItem(at: dir) }
+            // Minimal office zips built with the system zip tool.
+            let x = dir.appendingPathComponent("x"); try FileManager.default.createDirectory(at: x.appendingPathComponent("xl/worksheets"), withIntermediateDirectories: true)
+            try "<sst><si><t>Budget</t></si><si><t>Roof repair 4,800</t></si></sst>".write(to: x.appendingPathComponent("xl/sharedStrings.xml"), atomically: true, encoding: .utf8)
+            try "<worksheet><sheetData><row><c><v>1</v></c></row></sheetData></worksheet>".write(to: x.appendingPathComponent("xl/worksheets/sheet1.xml"), atomically: true, encoding: .utf8)
+            let pp = dir.appendingPathComponent("p"); try FileManager.default.createDirectory(at: pp.appendingPathComponent("ppt/slides"), withIntermediateDirectories: true)
+            try "<p:sld><p:sp><a:p><a:r><a:t>Quarterly review</a:t></a:r></a:p><a:p><a:r><a:t>Revenue up 12%</a:t></a:r></a:p></p:sp></p:sld>".write(to: pp.appendingPathComponent("ppt/slides/slide1.xml"), atomically: true, encoding: .utf8)
+            for (src, name) in [(x, "budget.xlsx"), (pp, "review.pptx")] {
+                let z = Process(); z.executableURL = URL(fileURLWithPath: "/usr/bin/zip"); z.currentDirectoryURL = src; z.arguments = ["-qr", dir.appendingPathComponent(name).path, "."]; try z.run(); z.waitUntilExit()
+            }
+            t.check(Extract.text(from: dir.appendingPathComponent("budget.xlsx"))?.contains("Roof repair 4,800") == true, "xlsx: \(Extract.text(from: dir.appendingPathComponent("budget.xlsx")) ?? "nil")")
+            let p = Extract.text(from: dir.appendingPathComponent("review.pptx")); t.check(p?.contains("Quarterly review") == true && p?.contains("Revenue up 12%") == true, "pptx: \(p ?? "nil")")
+            t.check(p?.contains("<") == false, "no tags left")
+        },
         TestCase(name: "html-only mail is stripped") { t in
             let m = Extract.parseRFC822("Subject: Hi\nContent-Type: text/html\n\n<html><body><p>Deposit <b>returned</b>.</p></body></html>")
             t.check(m.body.contains("Deposit returned"), "stripped: \(m.body)"); t.equal(m.subject, "Hi", "subject")

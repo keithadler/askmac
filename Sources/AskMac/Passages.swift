@@ -12,7 +12,7 @@ struct Passage: Hashable {
     let source: Candidate
     let text: String
     let index: Int
-    var title: String { source.url.deletingPathExtension().lastPathComponent }
+    var title: String { source.title ?? source.url.deletingPathExtension().lastPathComponent }
 }
 
 struct Scored: Hashable { let passage: Passage; let score: Double; let keyword: Double; let meaning: Double }

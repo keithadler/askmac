@@ -28,7 +28,7 @@
 <h2 id="how">How it answers</h2>
 <ol>
 <li><strong>Find.</strong> Spotlight is asked for files whose text or name contains your words, within the date window if you named one.</li>
-<li><strong>Read.</strong> Those files are read on the Mac: PDF, Word, RTF, HTML, text, Markdown, CSV and Mail messages, plus screenshots and Apple Notes when asked for. The window says what it is doing as it goes.</li>
+<li><strong>Read.</strong> Those files are read on the Mac: PDF, Word, Excel, PowerPoint, RTF, HTML, text, Markdown, CSV and Mail messages, plus screenshots and Apple Notes when asked for. The window says what it is doing as it goes.</li>
 <li><strong>Rank.</strong> Each file is split into passages. Passages score on the words they contain and, using the Mac's own language model for word meaning, how close they are to the question. The best few win; no single file may take more than three places.</li>
 <li><strong>Answer.</strong> On macOS 26 with Apple Intelligence on, Apple's on-device model writes two or three sentences from those passages, each fact followed by a citation like [1], and says <em>The files I found do not answer that</em> when they do not. Otherwise the answer is the best-matching sentence quoted from the top file.</li>
 </ol>
@@ -39,6 +39,7 @@
 <li><strong>Use the words that would be in the file.</strong> "lease deposit" beats "how much did I pay the landlord up front", because the file says deposit.</li>
 <li><strong>Dates help.</strong> "last week", "yesterday", "in March", "from Tuesday", "2025", "3 weeks ago" all narrow the search to files changed then.</li>
 <li><strong>Name the kind</strong> when you know it: "the lease PDF", "email from Sam", "spreadsheet with the budget".</li>
+<li><strong>Follow-ups work.</strong> After "lease deposit", ask "and when is rent due" or "what about the gutters"; the previous question's words and dates carry over. A short question that finds nothing on its own is retried the same way.</li>
 <li><strong>Fewer words when nothing is found.</strong> Every word must appear somewhere; drop the ones you are least sure of.</li>
 </ul>
 
