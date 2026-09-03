@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.0 — 2026-09-03
+
+A quick panel on ⌥ Space that floats over any app, like Spotlight; Escape closes it. Sources appear the moment ranking finishes, with the answer streaming in above them. The empty panel suggests questions about the documents changed most recently on this Mac. Share and Copy buttons on every answer. The Recent list restores an earlier answer instantly.
+
 ## 0.7.0 — 2026-09-03
 
 Drop a folder on the window to ask about just that folder (`--in <folder>` on the command line). Numbers, Pages and Keynote are read through their built-in preview image, first page only.

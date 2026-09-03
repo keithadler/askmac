@@ -34,7 +34,8 @@ struct AskMacApp: App {
         }
         Settings { SettingsView().environmentObject(model) }
         MenuBarExtra(isInserted: .constant(Prefs.menuBar)) {
-            Button("Ask…") { NSApp.activate(ignoringOtherApps: true); NSApp.windows.first { $0.title == "Ask for Mac" }?.makeKeyAndOrderFront(nil) }
+            Button("Ask…") { PanelController.shared.show() }.keyboardShortcut(" ", modifiers: .option)
+            Button("Open Ask for Mac") { NSApp.activate(ignoringOtherApps: true); NSApp.windows.first { $0.title == "Ask for Mac" }?.makeKeyAndOrderFront(nil) }
             Divider()
             Button("Quit") { NSApp.terminate(nil) }
         } label: { Image(systemName: "questionmark.bubble") }
@@ -53,7 +54,19 @@ final class AskModel: ObservableObject {
     @Published var modelNote = Answerer.modelStatus().why
     @Published var modelAvailable = Answerer.modelStatus().available
     @Published var scope: URL? { didSet { Sources.scopeOverride = scope } }
+    @Published var pendingSources: [Scored] = []
+    @Published var suggestions: [String] = []
+    @Published var focusRequest = 0
+    private var recentAnswers: [String: Answer] = [:]
     private var task: Task<Void, Never>?
+    func loadSuggestions() {
+        DispatchQueue.global(qos: .utility).async { let s = Suggest.recent(); Task { @MainActor in self.suggestions = s } }
+    }
+    /// The Recent list restores an earlier answer instantly; asking the same words again re-runs it.
+    func recall(_ q: String) {
+        if let a = recentAnswers[q] { question = q; answer = a; return }
+        question = q; ask()
+    }
     func stop() { task?.cancel(); task = nil; busy = false; status = ""; partial = ""; if answer == nil { answer = Answer(text: "", how: .none, sources: [], elapsed: 0, candidates: 0, note: "Stopped.") } }
     func openSource(_ n: Int) {
         guard let a = answer, n >= 1, n <= a.sources.count else { return }
@@ -71,12 +84,15 @@ final class AskModel: ObservableObject {
     }
     func ask() {
         let q = question.trimmingCharacters(in: .whitespaces); guard q.count > 2, !busy else { return }
-        busy = true; answer = nil; partial = ""; status = "Finding files…"
+        busy = true; answer = nil; partial = ""; pendingSources = []; status = "Finding files…"
         if Prefs.keepHistory { var h = Prefs.history.filter { $0 != q }; h.append(q); Prefs.history = h; history = Prefs.history }
         task = Task {
-            let a = await Ask.run(q, progress: { s in Task { @MainActor in self.status = s } }, onPartial: { p in Task { @MainActor in self.partial = p } })
+            let a = await Ask.run(q, progress: { s in Task { @MainActor in self.status = s } }, onPartial: { p in Task { @MainActor in self.partial = p } },
+                                  onRanked: { s in Task { @MainActor in self.pendingSources = s } })
             if Task.isCancelled { return }
-            self.answer = a; self.busy = false; self.status = ""
+            withAnimation(.easeOut(duration: 0.2)) { self.answer = a }
+            self.busy = false; self.status = ""; self.pendingSources = []
+            self.recentAnswers[q] = a
         }
     }
 }
@@ -102,11 +118,8 @@ struct MainView: View {
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    if let a = model.answer { AnswerView(answer: a) }
-                    else if model.busy {
-                        if !model.partial.isEmpty { Text(model.partial).font(.title3).padding(16).frame(maxWidth: .infinity, alignment: .leading).background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10)) }
-                        HStack(spacing: 8) { ProgressView().controlSize(.small); Text(model.status).foregroundStyle(.secondary) }
-                    }
+                    if let a = model.answer { AnswerView(answer: a).transition(.opacity) }
+                    else if model.busy { ProgressBody() }
                     else { EmptyStateView() }
                 }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -121,7 +134,7 @@ struct MainView: View {
                 Text("Nothing leaves this Mac.").font(.caption).foregroundStyle(.secondary)
             }.padding(.horizontal, 18).padding(.vertical, 8)
         }
-        .onAppear { focused = true }
+        .onAppear { focused = true; if model.suggestions.isEmpty { model.loadSuggestions() } }
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             guard let p = providers.first else { return false }
             _ = p.loadObject(ofClass: URL.self) { url, _ in
@@ -142,9 +155,13 @@ struct EmptyStateView: View {
             Text("Ask like you would ask a person who had read everything in your Documents, Desktop, Downloads, iCloud Drive and Mail. Drop a folder here to ask about just that folder.").foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Text("Try").font(.headline)
             ForEach(examples, id: \.self) { e in Button { model.question = e; model.ask() } label: { Label(e, systemImage: "arrow.turn.down.right") }.buttonStyle(.link) }
+            if !model.suggestions.isEmpty {
+                Text("Recently changed on this Mac").font(.headline).padding(.top, 8)
+                ForEach(model.suggestions, id: \.self) { e in Button { model.question = e; model.ask() } label: { Label(e, systemImage: "doc.text") }.buttonStyle(.link) }
+            }
             if !model.history.isEmpty {
                 Text("Recent").font(.headline).padding(.top, 8)
-                ForEach(model.history.reversed().prefix(8), id: \.self) { e in Button { model.question = e; model.ask() } label: { Label(e, systemImage: "clock") }.buttonStyle(.link) }
+                ForEach(model.history.reversed().prefix(8), id: \.self) { e in Button { model.recall(e) } label: { Label(e, systemImage: "clock") }.buttonStyle(.link) }
             }
         }
     }
@@ -152,6 +169,13 @@ struct EmptyStateView: View {
 
 struct AnswerView: View {
     let answer: Answer
+    var shareText: String {
+        var text = answer.text + "\n"; var seen = Set<URL>()
+        for (i, s) in answer.sources.enumerated() where seen.insert(s.passage.source.url).inserted || answer.how == .model {
+            text += "\n[\(i + 1)] \(s.passage.title)\(s.passage.page.map { ", page \($0)" } ?? "") — \(s.passage.source.noteId != nil ? "Apple Notes" : s.passage.source.url.path)"
+        }
+        return text
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             if answer.how == .none {
@@ -160,7 +184,12 @@ struct AnswerView: View {
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(answer.how == .quote ? "“\(answer.text)”" : answer.text).font(.title3).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-                    if answer.how == .quote, let s = answer.sources.first { Text("Quoted from \(s.passage.title)").font(.caption).foregroundStyle(.secondary) }
+                    HStack {
+                        if answer.how == .quote, let s = answer.sources.first { Text("Quoted from \(s.passage.title)").font(.caption).foregroundStyle(.secondary) }
+                        Spacer()
+                        ShareLink(item: shareText) { Label("Share", systemImage: "square.and.arrow.up") }.controlSize(.small).help("Share the answer with its sources")
+                        Button { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(shareText, forType: .string) } label: { Label("Copy", systemImage: "doc.on.doc") }.controlSize(.small).help("Copy the answer with its sources (⇧⌘C)")
+                    }
                 }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
                 Text(answer.declined ? "Closest matches" : "Sources").font(.headline)
                 if answer.declined { Text("These files matched the words but did not contain the answer. Try other words, or open one to look yourself.").font(.callout).foregroundStyle(.secondary) }
@@ -252,7 +281,7 @@ struct SettingsView: View {
             Section {
                 Toggle("Open at login", isOn: $login).onChange(of: login) { _, v in if v { try? SMAppService.mainApp.register() } else { try? SMAppService.mainApp.unregister() } }
                 Toggle("Show in the menu bar", isOn: $menuBar).onChange(of: menuBar) { _, v in Prefs.menuBar = v }
-                Toggle("⌥ Space brings the window forward", isOn: $hotkey).onChange(of: hotkey) { _, v in Prefs.hotkey = v; Hotkey.register() }
+                Toggle("⌥ Space opens the quick panel from any app", isOn: $hotkey).onChange(of: hotkey) { _, v in Prefs.hotkey = v; Hotkey.register() }
                 Toggle("Check for updates daily", isOn: $updates).onChange(of: updates) { _, v in Updates.enabled = v }
             }
         }.formStyle(.grouped).frame(width: 520, height: 520)
@@ -265,10 +294,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             UserDefaults.standard.set(true, forKey: "loginItemOffered"); try? SMAppService.mainApp.register()
         }
         Updates.scheduleBackgroundChecks()
-        Hotkey.onPress = {
-            if let w = NSApp.windows.first(where: { $0.title == "Ask for Mac" }), w.isKeyWindow, NSApp.isActive { w.orderOut(nil); NSApp.hide(nil) }
-            else { NSApp.activate(ignoringOtherApps: true); NSApp.windows.first { $0.title == "Ask for Mac" }?.makeKeyAndOrderFront(nil) }
-        }
+        Hotkey.onPress = { PanelController.shared.toggle() }
+        AskModel.shared.loadSuggestions()
         if ProcessInfo.processInfo.environment["ASKMAC_HOME"] == nil { Hotkey.register() }
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { !Prefs.menuBar }

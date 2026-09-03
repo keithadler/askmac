@@ -128,7 +128,7 @@ enum Ask {
         return merged
     }
 
-    static func run(_ text: String, useModel: Bool = Prefs.useModel, limit: Int = 8, progress: ((String) -> Void)? = nil, onPartial: ((String) -> Void)? = nil) async -> Answer {
+    static func run(_ text: String, useModel: Bool = Prefs.useModel, limit: Int = 8, progress: ((String) -> Void)? = nil, onPartial: ((String) -> Void)? = nil, onRanked: (([Scored]) -> Void)? = nil) async -> Answer {
         let started = Date(); var phases: [String: Double] = [:]; var mark = Date()
         progress?("Finding files…")
         func lap(_ name: String) { phases[name] = (Date().timeIntervalSince(mark) * 100).rounded() / 100; mark = Date() }
@@ -160,6 +160,7 @@ enum Ask {
         progress?("Ranking \(passages.count) passages…")
         let scored = Passages.rank(q, passages: passages, limit: limit)
         lap("rank")
+        if !scored.isEmpty { onRanked?(scored) }   // the window can show sources while the answer is still being written
         progress?(useModel && Answerer.modelStatus().available && !scored.isEmpty ? "Writing the answer…" : "Picking the sentence…")
         var a = await Answerer.answer(q, scored: scored, candidates: cands.count, useModel: useModel, started: started, onPartial: onPartial)
         lap("answer"); a.phases = phases

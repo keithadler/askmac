@@ -9,7 +9,7 @@ enum Promo {
         let out = dir.appendingPathComponent("promo"); try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
         var written: [URL] = []
         let cards: [(String, String, String, String?)] = [
-            ("1-hero", "Ask your Mac a question.\nGet the answer, and the file.", "Your documents, downloads, iCloud Drive and mail, read on this Mac. Every answer names its source and opens it.", "answer.png"),
+            ("1-hero", "Ask your Mac a question.\nGet the answer, and the file.", "⌥ Space from any app. Your documents, downloads, iCloud Drive and mail, read on this Mac. Every answer names its source and opens it.", "panel-answer.png"),
             ("2-local", "Nothing leaves the Mac.", "Spotlight finds the files, the Mac reads them, Apple's on-device model writes the answer. No account, no upload, no index of your life on someone's server.", nil),
             ("3-honest", "When it doesn't know,\nit says so.", "Answers are built only from passages in your files, with numbered citations. Without Apple Intelligence it quotes the sentence instead of writing one.", "empty.png"),
             ("4-free", "Free. Open source. Also a command line.", "askmac \"lease deposit last week\"   MIT licensed, no server, no analytics.", nil),

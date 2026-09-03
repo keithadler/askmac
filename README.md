@@ -6,11 +6,13 @@ Ask your Mac a question in your own words. Get the answer, and the file it came 
 
 ## Download
 
-**[Download Ask-for-Mac-0.7.0.dmg](https://github.com/keithadler/askmac/releases/latest/download/Ask-for-Mac-0.7.0.dmg)** (macOS 14 or later, Apple Silicon and Intel; written answers need macOS 26 with Apple Intelligence)
+**[Download Ask-for-Mac-0.8.0.dmg](https://github.com/keithadler/askmac/releases/latest/download/Ask-for-Mac-0.8.0.dmg)** (macOS 14 or later, Apple Silicon and Intel; written answers need macOS 26 with Apple Intelligence)
 
 Open the DMG, drag the app to Applications, open it. The first time, macOS says the app is from an unidentified developer: right-click the app, choose Open, then Open again. That is once. Nothing else to set up.
 
-![Answer](docs/screenshots/answer.png)
+![The quick panel](docs/screenshots/panel-answer.png)
+
+Press ⌥ Space in any app and the panel floats over your work, like Spotlight. Type, press Return, read, press Escape. The full window is there too, for settings and longer sessions.
 
 ## How it works
 
@@ -19,7 +21,7 @@ Open the DMG, drag the app to Applications, open it. The first time, macOS says 
 3. **Rank.** Each file becomes passages, scored on the words they contain and on meaning, using the Mac's own word embeddings. No file may take more than three places.
 4. **Answer.** On macOS 26 with Apple Intelligence, Apple's on-device model writes two or three sentences from those passages with numbered citations, and says plainly when the files do not answer. Anywhere else, the answer is the best sentence quoted from the top file.
 
-Every answer lists its sources. An answer you cannot check is not an answer. While it works, the window says what it is doing ("Reading 12 files…") and the answer streams in as Apple's model writes it. ⌥ Space brings the window forward from anywhere. Follow-ups work: after "lease deposit", "and when is rent due" keeps looking at the lease. Drop a folder on the window to ask about just that folder, or `--in <folder>` on the command line.
+Every answer lists its sources. An answer you cannot check is not an answer. While it works, the sources appear the moment ranking finishes and the answer streams in over them as Apple's model writes it. The empty panel suggests questions about the documents you changed most recently, so the first question is never a blank page. ⌥ Space brings the window forward from anywhere. Follow-ups work: after "lease deposit", "and when is rent due" keeps looking at the lease. Drop a folder on the window to ask about just that folder, or `--in <folder>` on the command line.
 
 ## What it does not do
 

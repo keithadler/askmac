@@ -21,6 +21,7 @@ enum Screenshots {
         try Demo.write(tmp)
         let model = AskModel.shared
         model.history = ["tax return 2025 total", "email from Sam about the roof last week", "dentist invoice crown"]
+        model.suggestions = ["What does “Lease Woodland Ave” say?", "What does “Deposit receipt” say?", "What does “Dentist invoice” say?", "What does “Tax return 2025 summary” say?"]
         model.modelNote = "Apple Intelligence is on; answers are written on this Mac."; model.modelAvailable = true
 
         var written: [URL] = []
@@ -37,20 +38,52 @@ enum Screenshots {
                 let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 860, height: 600), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
                 w.title = "Ask for Mac"; w.contentView = NSHostingView(rootView: MainView().environmentObject(model).frame(width: 860, height: 600)); w.center(); w.makeKeyAndOrderFront(nil)
                 settle(); written.append(try capture(w, to: dir.appendingPathComponent("\(name)\(suffix).png"))); w.orderOut(nil)
+                // The quick panel, floating over a neutral backdrop so its material shows.
+                let panelHost = NSHostingView(rootView: PanelView().environmentObject(model).frame(width: 720)); panelHost.sizingOptions = []
+                let ph = min(max(panelHost.fittingSize.height, 72), 640)
+                let back = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 860, height: ph + 140), styleMask: [.borderless], backing: .buffered, defer: false)
+                back.backgroundColor = appearance == .darkAqua ? NSColor(calibratedRed: 0.16, green: 0.20, blue: 0.30, alpha: 1) : NSColor(calibratedRed: 0.80, green: 0.85, blue: 0.92, alpha: 1); back.center(); back.orderFront(nil)
+                let panel = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: ph), styleMask: [.borderless], backing: .buffered, defer: false)
+                panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true
+                panel.contentView = panelHost
+                panel.setFrameOrigin(NSPoint(x: back.frame.midX - 360, y: back.frame.midY - ph / 2)); panel.level = .floating; panel.makeKeyAndOrderFront(nil)
+                settle()
+                written.append(try capture(back, to: dir.appendingPathComponent("panel-\(name)\(suffix).png"), also: panel))
+                panel.orderOut(nil); back.orderOut(nil)
             }
         }
         if announce { written += try Promo.render(to: dir, screenshots: dir) }
         return written
     }
     @MainActor static func settle() { let until = Date().addingTimeInterval(0.8); while Date() < until { RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.02)) } }
-    @MainActor static func capture(_ window: NSWindow, to url: URL) throws -> URL {
+    @MainActor static func image(of window: NSWindow) throws -> CGImage {
         typealias Fn = @convention(c) (CGRect, UInt32, UInt32, UInt32) -> Unmanaged<CGImage>?
         guard let sym = dlsym(dlopen(nil, RTLD_NOW), "CGWindowListCreateImage") else { throw NSError(domain: "shots", code: 1) }
         let fn = unsafeBitCast(sym, to: Fn.self)
-        guard let img = fn(.null, 1 << 3, UInt32(window.windowNumber), 1 << 0 | 1 << 4)?.takeRetainedValue() else { throw NSError(domain: "shots", code: 2) }
+        guard let i = fn(.null, 1 << 3, UInt32(window.windowNumber), 1 << 0 | 1 << 4)?.takeRetainedValue() else { throw NSError(domain: "shots", code: 2) }
+        return i
+    }
+
+    /// One window, or a floating window composited over a backdrop window at its true offset.
+    @MainActor static func capture(_ window: NSWindow, to url: URL, also: NSWindow? = nil) throws -> URL {
+        var img = try image(of: window)
+        if let also {
+            let top = try image(of: also)
+            let scale = CGFloat(img.width) / window.frame.width
+            let ctx = CGContext(data: nil, width: img.width, height: img.height, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            ctx.draw(img, in: CGRect(x: 0, y: 0, width: img.width, height: img.height))
+            let x = (also.frame.minX - window.frame.minX) * scale, y = (also.frame.minY - window.frame.minY) * scale
+            ctx.draw(top, in: CGRect(x: x, y: y, width: CGFloat(top.width), height: CGFloat(top.height)))
+            img = ctx.makeImage()!
+        }
         guard let png = NSBitmapImageRep(cgImage: img).representation(using: .png, properties: [:]) else { throw NSError(domain: "shots", code: 3) }
         try png.write(to: url); return url
     }
+}
+
+extension NSRect {
+    /// Window frames are bottom-left; CGWindowList wants top-left, main-screen relative.
+    func toCG() -> CGRect { let h = NSScreen.screens.first?.frame.height ?? 0; return CGRect(x: minX, y: h - maxY, width: width, height: height) }
 }
 
 enum Demo {

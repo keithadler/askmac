@@ -105,6 +105,17 @@ enum PipelineSuite {
             t.equal(CLI.run("tax", ["refund", "--in", taxes.path, "--json"]), 0, "--in on the command line")
             t.equal(Sources.scopeOverride?.path, taxes.path, "--in sets the scope")
         },
+        TestCase(name: "sources are reported before the answer, and suggestions come from recent files") { t in
+            let dir = URL(fileURLWithPath: Prefs.folders!.first!); try seed(dir)
+            var rankedFirst = false; var sawSources = 0
+            let sem = DispatchSemaphore(value: 0); var a: Answer?
+            Task.detached { a = await Ask.run("lease deposit", useModel: false, onRanked: { s in sawSources = s.count; rankedFirst = a == nil }); sem.signal() }; sem.wait()
+            t.check(sawSources >= 1 && rankedFirst, "onRanked fired with \(sawSources) sources before the answer existed")
+            t.equal(a?.sources.count, sawSources, "same sources in the answer")
+            let saved = Sources.mdfind; defer { Sources.mdfind = saved }
+            Sources.mdfind = { _ in [dir.appendingPathComponent("Lease Woodland Ave.txt").path, dir.appendingPathComponent("Dentist invoice.md").path, dir.appendingPathComponent("Lease Woodland Ave.txt").path] }
+            let s = Suggest.recent(); t.equal(s.count, 2, "one suggestion per file: \(s)"); t.check(s.first?.hasPrefix("What does “") == true, "phrased as a question")
+        },
         TestCase(name: "prompt for the on-device model is bounded and numbered") { t in
             let c = Candidate(url: URL(fileURLWithPath: "/tmp/x.txt"), kind: .text, modified: nil)
             let scored = (0..<10).map { i in Scored(passage: Passage(source: c, text: String(repeating: "word ", count: 600), index: i), score: 1, keyword: 1, meaning: 0) }
