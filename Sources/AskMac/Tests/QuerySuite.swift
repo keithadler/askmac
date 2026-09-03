@@ -33,6 +33,9 @@ enum QuerySuite {
             t.check(s.contains("kMDItemTextContent == \"lease*\"cdw"), "content clause"); t.check(s.contains("deposit*"), "second term")
             t.check(s.contains("kMDItemContentModificationDate >= $time.iso("), "date clause"); t.check(s.contains("!= \"com.apple.mail.emlx\""), "files exclude mail")
             t.check(Sources.spotlightQuery(q, mail: true).contains("== \"com.apple.mail.emlx\""), "mail query")
+            let root = URL(fileURLWithPath: Prefs.folders!.first!)
+            t.equal(Sources.displayPath(root.appendingPathComponent("Taxes/2025")), root.lastPathComponent + "/Taxes/2025", "display path relative to searched folder")
+            t.check(Sources.displayPath(FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Elsewhere")).hasPrefix("~/"), "home shortened")
             t.equal(Sources.kind(of: URL(fileURLWithPath: "/a/b.PDF")), .pdf, "kind by extension"); t.equal(Sources.kind(of: URL(fileURLWithPath: "/a/b.emlx")), .mail, "mail kind")
         },
     ])

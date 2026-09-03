@@ -1,0 +1,11 @@
+Ask for Mac. Free, open source.
+
+Ask your Mac a question in your own words: "how much was the lease deposit", "email from Sam about the roof last week", "dentist invoice in March". Get the answer, with the file it came from, one click away.
+
+Nothing leaves the Mac. Spotlight finds the files, the Mac reads them, and on macOS 26 Apple's on-device model writes the answer with citations. Without Apple Intelligence it quotes the sentence instead of writing one. When your files don't have the answer, it says so.
+
+No account, no upload, no second index of your life on someone's server. Also a command line: askmac "tax return 2025 total"
+
+Fifth in the family with Clip, Tidy, Stash and Permissions.
+
+https://github.com/keithadler/askmac

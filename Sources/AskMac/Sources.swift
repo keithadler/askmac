@@ -23,6 +23,15 @@ enum Sources {
         if FileManager.default.fileExists(atPath: icloud.path) { out.append(icloud) }
         return out
     }
+    /// "Documents/Taxes" rather than a full path: relative to the searched folder when inside one, else ~.
+    static func displayPath(_ url: URL) -> String {
+        for f in folders where url.path.hasPrefix(f.path) {
+            let rest = url.path.dropFirst(f.path.count)
+            return f.lastPathComponent + (rest.isEmpty ? "" : String(rest))
+        }
+        if url.path.hasPrefix(mailFolder.path) { return "Mail" }
+        return url.path.replacingOccurrences(of: FileManager.default.homeDirectoryForCurrentUser.path, with: "~")
+    }
     static var mailFolder: URL { FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Mail") }
 
     /// Runs mdfind. Tests replace this.

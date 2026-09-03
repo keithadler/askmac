@@ -117,7 +117,7 @@ struct AnswerView: View {
                         if i < answer.sources.count - 1 { Divider().padding(.leading, 54) }
                     }
                 }.background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
-                Text(String(format: "%d files considered in %.1f seconds.", answer.candidates, answer.elapsed)).font(.caption).foregroundStyle(.secondary)
+                Text(String(format: "%d %@ considered in %.1f seconds.", answer.candidates, answer.candidates == 1 ? "file" : "files", answer.elapsed)).font(.caption).foregroundStyle(.secondary)
             }
         }
     }
@@ -135,7 +135,7 @@ struct SourceRow: View {
                 Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().frame(width: 28, height: 28)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(scored.passage.title).font(.body.weight(.medium))
-                    Text([scored.passage.source.modified.map { $0.formatted(date: .abbreviated, time: .omitted) }, url.deletingLastPathComponent().path.replacingOccurrences(of: FileManager.default.homeDirectoryForCurrentUser.path, with: "~")].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                    Text([scored.passage.source.modified.map { $0.formatted(date: .abbreviated, time: .omitted) }, Sources.displayPath(url.deletingLastPathComponent())].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                 }
                 Spacer()
                 Button("Open") { NSWorkspace.shared.open(url) }

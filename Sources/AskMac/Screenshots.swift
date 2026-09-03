@@ -61,7 +61,7 @@ enum Demo {
             try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(-Double(daysAgo) * 86400)], ofItemAtPath: u.path)
         }
         try put("Lease Woodland Ave.txt", "Residential lease, 12 Woodland Ave.\n\nSecurity deposit: $2,400, due at signing. Rent: $1,950 per month, due on the first.\n\nTenant: Sam Rivera. Landlord: Pine Street Holdings.\n\nTerm: twelve months beginning September 1.", daysAgo: 22)
-        try put("Deposit receipt.txt", "Pine Street Holdings\n\nReceived from Sam Rivera on August 14: $2,400 security deposit for 12 Woodland Ave. Thank you.", daysAgo: 20)
+        try put("Deposit receipt.txt", "Pine Street Holdings\n\nReceived from Sam Rivera on August 14: $2,400 security deposit for the 12 Woodland Ave lease. Thank you.", daysAgo: 20)
         try put("Dentist invoice.md", "# Dr. Lee, DDS\n\nCrown, lower molar: 1,150.00\nCleaning: 180.00\n\nPaid in full, thank you.", daysAgo: 60)
         try put("Tax return 2025 summary.txt", "2025 return summary. Total tax: 14,212. Refund: 1,380. Filed April 9.", daysAgo: 140)
         try put("Recipes.txt", "Lemon cake: 3 eggs, 200 g sugar, zest of two lemons, 180 g flour.", daysAgo: 300)
