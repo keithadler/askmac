@@ -4,6 +4,8 @@ Ask your Mac a question in your own words. Get the answer, and the file it came 
 
 "how much was the lease deposit" → *The security deposit on the Woodland Ave lease is $2,400, due at signing [1].* with the lease one click away.
 
+Your Mac cannot do this on its own. Spotlight finds files but does not read them for you. Siri does not answer from your documents. A chatbot will, but only after you upload the documents to someone else's computer. Ask for Mac reads the files on your Mac, answers with citations, and uploads nothing.
+
 ## Download
 
 **[Download Ask-for-Mac-1.0.0.dmg](https://github.com/keithadler/askmac/releases/latest/download/Ask-for-Mac-1.0.0.dmg)** (macOS 14 or later, Apple Silicon and Intel; written answers need macOS 26 with Apple Intelligence)

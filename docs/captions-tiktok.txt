@@ -1,5 +1,5 @@
 askmac.png — Ask for Mac
-Free, open source Mac app: ask your Mac a question, get the answer and the file it came from. "How much was the lease deposit?" It reads your PDFs, mail, notes and screenshots ON the Mac. Safe: nothing uploads, no account, and the code is public. Press ⌥ Space in any app. Get it: github.com/keithadler/askmac
+Your Mac can't do this on its own: ask a question in plain words and get the answer WITH the file it came from. Spotlight only finds files. Chatbots need you to upload them. Ask for Mac is a free, open source app that reads your PDFs, mail, notes and screenshots ON the Mac and answers with citations. Safe: nothing uploads, no account, the code is public. Press ⌥ Space in any app. Get it: github.com/keithadler/askmac
 #mac #macos #apple #macbook #freeapp #opensource #privacy #productivity #appleintelligence #macapps #techtok #fyp
 
 watchmac.png — Watch for Mac
