@@ -52,7 +52,7 @@ enum Sources {
     static func spotlightQuery(_ q: Query, mail: Bool) -> String {
         var parts: [String] = []
         for t in q.terms.prefix(6) {
-            let esc = t.replacingOccurrences(of: "\"", with: "")
+            let esc = stem(t).replacingOccurrences(of: "\"", with: "")
             // Word-prefix matching ("cdw") uses Spotlight's word index; substring matching walked it and took seconds.
             parts.append("(kMDItemTextContent == \"\(esc)*\"cdw || kMDItemDisplayName == \"\(esc)*\"cdw || kMDItemTitle == \"\(esc)*\"cdw || kMDItemSubject == \"\(esc)*\"cdw || kMDItemAuthors == \"\(esc)*\"cdw)")
         }
@@ -61,6 +61,19 @@ enum Sources {
         if let s = q.since { parts.append("kMDItemContentModificationDate >= $time.iso(\(iso(s)))") }
         if let u = q.until { parts.append("kMDItemContentModificationDate < $time.iso(\(iso(u)))") }
         return parts.joined(separator: " && ")
+    }
+    /// "invoices" → "invoice", "paying" → "pay": the prefix query then matches the family of the word.
+    static func stem(_ w: String) -> String {
+        guard w.count > 4, w.allSatisfy(\.isLetter) else { return w }
+        for suffix in ["ing", "ies", "es", "ed", "s"] where w.hasSuffix(suffix) && w.count - suffix.count >= 3 {
+            var base = String(w.dropLast(suffix.count))
+            // "es" only after a hissing sound (boxes, watches); "invoices" is invoice + s.
+            if suffix == "es", !(base.hasSuffix("s") || base.hasSuffix("x") || base.hasSuffix("z") || base.hasSuffix("ch") || base.hasSuffix("sh")) { continue }
+            if suffix == "ies" { base += "y" }
+            if suffix == "ing" || suffix == "ed", base.count >= 3, base.last == base.dropLast().last { base.removeLast() }   // stopped → stop
+            return base
+        }
+        return w
     }
     static func iso(_ d: Date) -> String { let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime]; return f.string(from: d) }
 

@@ -56,6 +56,29 @@ enum PipelineSuite {
             t.equal(Ask.followUp(Query.parse("what about the gutters"), after: Query.parse("email from Sam about the roof")).scopes, [.mail], "scope carried")
             Ask.previous = nil
         },
+        TestCase(name: "files read once per session, re-read when they change") { t in
+            let dir = URL(fileURLWithPath: Prefs.folders!.first!); try seed(dir)
+            _ = ask("lease deposit"); let first = Extract.reads
+            t.check(first >= 1, "read something")
+            _ = ask("lease deposit"); t.equal(Extract.reads, first, "second ask read nothing new")
+            try "Lease agreement.\n\nSecurity deposit: $2,600 now.".write(to: dir.appendingPathComponent("Lease Woodland Ave.txt"), atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(60)], ofItemAtPath: dir.appendingPathComponent("Lease Woodland Ave.txt").path)
+            let a = ask("lease deposit"); t.check(Extract.reads > first, "changed file re-read"); t.check(a.text.contains("2,600"), "fresh text: \(a.text)")
+        },
+        TestCase(name: "follow-up prompt carries the earlier answer") { t in
+            Ask.previousAnswer = "The deposit was $2,400."
+            let c = Candidate(url: URL(fileURLWithPath: "/tmp/x.txt"), kind: .text, modified: nil)
+            let p = Answerer.prompt(Query(text: "lease deposit — and when is rent due", terms: ["lease"], since: nil, until: nil, kinds: [], scopes: [.files]), scored: [Scored(passage: Passage(source: c, text: "Rent is due on the first.", index: 0), score: 1, keyword: 1, meaning: 0)])
+            t.check(p.contains("Earlier in this conversation") && p.contains("$2,400"), "context included")
+            t.check(p.contains("Question: and when is rent due"), "only the new question is asked: \(p.prefix(300))")
+            t.check(!Answerer.prompt(Query.parse("lease deposit"), scored: []).contains("Earlier"), "no context on a fresh question")
+            Ask.previousAnswer = nil
+        },
+        TestCase(name: "stemming for the Spotlight prefix") { t in
+            t.equal(Sources.stem("invoices"), "invoice", "es"); t.equal(Sources.stem("deposits"), "deposit", "s"); t.equal(Sources.stem("policies"), "policy", "ies")
+            t.equal(Sources.stem("stopped"), "stop", "double consonant"); t.equal(Sources.stem("paying"), "pay", "ing"); t.equal(Sources.stem("lease"), "lease", "short words untouched"); t.equal(Sources.stem("2025"), "2025", "numbers untouched")
+            t.check(Sources.spotlightQuery(Query.parse("dentist invoices"), mail: false).contains("invoice*"), "stem used in query")
+        },
         TestCase(name: "prompt for the on-device model is bounded and numbered") { t in
             let c = Candidate(url: URL(fileURLWithPath: "/tmp/x.txt"), kind: .text, modified: nil)
             let scored = (0..<10).map { i in Scored(passage: Passage(source: c, text: String(repeating: "word ", count: 600), index: i), score: 1, keyword: 1, meaning: 0) }

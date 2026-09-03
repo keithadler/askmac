@@ -12,9 +12,37 @@ enum Extract {
     static let maxBytes = 12_000_000
     static let maxChars = 400_000
 
+    /// Text already read this session, keyed by path and modification date, so a follow-up does not
+    /// read the same forty files again. Lives in memory only; capped so it cannot grow without bound.
+    private static var cache: [String: (pages: [String]?, text: String?)] = [:]
+    private static var cacheChars = 0
+    static let cacheLimit = 40_000_000
+    static var reads = 0     // tests count real reads
+    private static let cacheLock = NSLock()
+    static func cacheKey(_ url: URL) -> String {
+        let m = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate)?.timeIntervalSince1970 ?? 0
+        return "\(url.path)|\(m)"
+    }
+    static func cached(_ url: URL, compute: () -> (pages: [String]?, text: String?)) -> (pages: [String]?, text: String?) {
+        let key = cacheKey(url)
+        cacheLock.lock(); if let hit = cache[key] { cacheLock.unlock(); return hit }; cacheLock.unlock()
+        let v = compute()
+        cacheLock.lock()
+        reads += 1
+        let size = (v.text?.count ?? 0) + (v.pages?.reduce(0) { $0 + $1.count } ?? 0)
+        if cacheChars + size > cacheLimit { cache.removeAll(); cacheChars = 0 }
+        cache[key] = v; cacheChars += size
+        cacheLock.unlock()
+        return v
+    }
+    static func clearCache() { cacheLock.lock(); cache.removeAll(); cacheChars = 0; cacheLock.unlock() }
+
     struct Mail { var subject: String; var from: String; var to: String; var date: Date?; var body: String }
 
     static func text(from url: URL) -> String? {
+        cached(url) { (nil, textUncached(from: url)) }.text
+    }
+    static func textUncached(from url: URL) -> String? {
         guard let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize), size <= maxBytes else { return nil }
         let ext = url.pathExtension.lowercased()
         var out: String?
@@ -39,8 +67,9 @@ enum Extract {
     }
 
     /// Page by page, stopping once there is enough: PDFDocument.string on a 400-page manual took seconds.
-    static func pdf(_ url: URL) -> String? { pdfPages(url)?.joined(separator: "\n") }
-    static func pdfPages(_ url: URL) -> [String]? {
+    static func pdf(_ url: URL) -> String? { pdfPagesUncached(url)?.joined(separator: "\n") }
+    static func pdfPages(_ url: URL) -> [String]? { cached(url) { (pdfPagesUncached(url), nil) }.pages }
+    static func pdfPagesUncached(_ url: URL) -> [String]? {
         guard let doc = PDFDocument(url: url) else { return nil }
         var out: [String] = []; var total = 0
         for i in 0..<min(doc.pageCount, 120) {

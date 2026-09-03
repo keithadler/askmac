@@ -57,7 +57,11 @@ enum Answerer {
     }
 
     static func prompt(_ q: Query, scored: [Scored]) -> String {
-        var p = "Question: \(q.text)\n\nPassages from the person's own files, numbered:\n"
+        var p = ""
+        if q.text.contains(" — "), let prevA = Ask.previousAnswer {   // a follow-up: the earlier exchange helps the model resolve "it"
+            p += "Earlier in this conversation, the question \"\(q.text.components(separatedBy: " — ").first ?? "")\" was answered: \(prevA.prefix(400))\n\n"
+        }
+        p += "Question: \(q.text.components(separatedBy: " — ").last ?? q.text)\n\nPassages from the person's own files, numbered:\n"
         // "Roof estimate (Sam Rivera, Sep 1)" tells the model what a mail passage is.
         var budget = 9000   // characters; the on-device model's window is small
         for (i, s) in scored.enumerated() {
@@ -106,6 +110,7 @@ enum Ask {
     static var useSpotlight = true
     /// The previous question, so "and when is rent due?" keeps looking at the lease.
     static var previous: Query?
+    static var previousAnswer: String?
     static func followUp(_ q: Query, after prev: Query?, force: Bool = false) -> Query {
         guard let prev else { return q }
         let lower = q.text.lowercased()

@@ -41,7 +41,7 @@ enum TestKit {
                 let dir = tempDir()
                 Prefs.defaults = UserDefaults(suiteName: "com.keithadler.askmac.selftest")!
                 Prefs.defaults.removePersistentDomain(forName: "com.keithadler.askmac.selftest")
-                Prefs.folders = [dir.path]; Ask.useSpotlight = false; CLI.quiet = true; Ask.previous = nil
+                Prefs.folders = [dir.path]; Ask.useSpotlight = false; CLI.quiet = true; Ask.previous = nil; Ask.previousAnswer = nil; Extract.clearCache(); Extract.reads = 0
                 do { try c.run(t) } catch { t.fail("threw \(error)") }
                 Prefs.defaults = .standard; Ask.useSpotlight = true; CLI.quiet = false
                 try? FileManager.default.removeItem(at: dir)

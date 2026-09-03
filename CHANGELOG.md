@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0 — 2026-09-03
+
+Files read during a session are kept in memory (capped) so follow-ups skip the reading phase; a changed file is read again. Follow-ups hand the model the earlier question and answer so "it" resolves. Mail is searched by default whenever it is readable, not only when a question says "email". Light stemming, so "invoices" finds "invoice" and "paying" finds "pay".
+
 ## 0.4.0 — 2026-09-03
 
 PDF sources say which page. Quick Look on any source (the eye button). ⌘1 to ⌘9 open a source, ⇧⌘C copies the answer with its sources, ⌘. stops a question. Apple's model is raced against a 40-second clock and the answer falls back to a quoted sentence if it loses, so nothing can hang the window.
