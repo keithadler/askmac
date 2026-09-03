@@ -7,7 +7,15 @@ enum PipelineSuite {
         try "Dentist invoice, Dr. Lee.\n\nCrown, lower molar: 1,150.00\nCleaning: 180.00\n\nPaid in full.".write(to: dir.appendingPathComponent("Dentist invoice.md"), atomically: true, encoding: .utf8)
         try "Recipe: lemon cake. 3 eggs, 200 g sugar, zest of two lemons.".write(to: dir.appendingPathComponent("recipes.txt"), atomically: true, encoding: .utf8)
     }
-    static func ask(_ q: String) -> Answer { Ask.previous = nil; let sem = DispatchSemaphore(value: 0); var a: Answer?; Task.detached { a = await Ask.run(q, useModel: false); sem.signal() }; sem.wait(); return a! }
+    /// Run the async pipeline from a synchronous test. The result crosses the task boundary in a
+    /// lock-protected box: Swift 6 rejects mutating a captured local from concurrent code.
+    static func ask(_ q: String) -> Answer { Ask.previous = nil; return runAsk(q)! }
+    static func runAsk(_ q: String, onRanked: (([Scored]) -> Void)? = nil) -> Answer? {
+        let box = AnswerBox(); let sem = DispatchSemaphore(value: 0)
+        Task.detached { box.set(await Ask.run(q, useModel: false, onRanked: onRanked)); sem.signal() }
+        sem.wait()
+        return box.value
+    }
     static let suite = TestSuite(name: "Pipeline", cases: [
         TestCase(name: "walks folders and quotes the sentence with the answer") { t in
             let dir = URL(fileURLWithPath: Prefs.folders!.first!); try seed(dir)
@@ -33,8 +41,7 @@ enum PipelineSuite {
         TestCase(name: "a short question that finds nothing retries with the last one") { t in
             let dir = URL(fileURLWithPath: Prefs.folders!.first!); try seed(dir)
             _ = ask("lease deposit")
-            let sem = DispatchSemaphore(value: 0); var a: Answer?
-            Task.detached { a = await Ask.run("rent monthly", useModel: false); sem.signal() }; sem.wait()
+            let a = runAsk("rent monthly")
             t.equal(a?.how, .quote, "answered via follow-up"); t.check(a?.text.contains("1,950") == true, "rent sentence: \(a?.text ?? "")")
             Ask.previous = nil
         },
@@ -107,10 +114,11 @@ enum PipelineSuite {
         },
         TestCase(name: "sources are reported before the answer, and suggestions come from recent files") { t in
             let dir = URL(fileURLWithPath: Prefs.folders!.first!); try seed(dir)
-            var rankedFirst = false; var sawSources = 0
-            let sem = DispatchSemaphore(value: 0); var a: Answer?
-            Task.detached { a = await Ask.run("lease deposit", useModel: false, onRanked: { s in sawSources = s.count; rankedFirst = a == nil }); sem.signal() }; sem.wait()
-            t.check(sawSources >= 1 && rankedFirst, "onRanked fired with \(sawSources) sources before the answer existed")
+            // The callback fires on another task, so what it saw is recorded in a box too.
+            let seen = CountBox()
+            let a = runAsk("lease deposit", onRanked: { s in seen.record(s.count) })
+            let sawSources = seen.count
+            t.check(sawSources >= 1 && seen.beforeAnswer, "onRanked fired with \(sawSources) sources before the answer existed")
             t.equal(a?.sources.count, sawSources, "same sources in the answer")
             let saved = Sources.mdfind; defer { Sources.mdfind = saved }
             Sources.mdfind = { _ in [dir.appendingPathComponent("Lease Woodland Ave.txt").path, dir.appendingPathComponent("Dentist invoice.md").path, dir.appendingPathComponent("Lease Woodland Ave.txt").path] }
@@ -124,4 +132,15 @@ enum PipelineSuite {
             t.check(Answerer.instructions.contains("do not answer that"), "instructions say when to give up")
         },
     ])
+}
+
+/// What the onRanked callback saw, carried out of the task that ran it.
+final class CountBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored = 0
+    private var fired = false
+    var count: Int { lock.lock(); defer { lock.unlock() }; return stored }
+    /// True when the callback ran at all, which by contract is before the answer exists.
+    var beforeAnswer: Bool { lock.lock(); defer { lock.unlock() }; return fired }
+    func record(_ n: Int) { lock.lock(); stored = n; fired = true; lock.unlock() }
 }
