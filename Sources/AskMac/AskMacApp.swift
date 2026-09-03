@@ -100,14 +100,23 @@ final class AskModel: ObservableObject {
 struct MainView: View {
     @EnvironmentObject var model: AskModel
     @FocusState private var focused: Bool
+    @State private var showTip = !Prefs.defaults.bool(forKey: "tipShown") && ProcessInfo.processInfo.environment["ASKMAC_HOME"] == nil
     var body: some View {
         VStack(spacing: 0) {
+            if showTip {
+                HStack(spacing: 10) {
+                    Image(systemName: "keyboard").foregroundStyle(.secondary)
+                    Text("Press ⌥ Space in any app to ask from a floating panel. Right-click a folder in Finder and choose Services › Ask for Mac About This to ask about just that folder.").font(.callout).fixedSize(horizontal: false, vertical: true)
+                    Spacer()
+                    Button("Got it") { withAnimation { showTip = false }; Prefs.defaults.set(true, forKey: "tipShown") }
+                }.padding(.horizontal, 18).padding(.vertical, 10).background(.tint.opacity(0.12))
+            }
             HStack(spacing: 10) {
                 Image(systemName: "questionmark.bubble").font(.title2).foregroundStyle(.secondary)
                 if let scope = model.scope {
                     HStack(spacing: 4) {
                         Image(systemName: "folder"); Text(scope.lastPathComponent)
-                        Button { model.scope = nil } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain).help("Search everywhere again")
+                        Button { model.scope = nil } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain).help("Search everywhere again").accessibilityLabel("Search everywhere again")
                     }.font(.callout).padding(.horizontal, 8).padding(.vertical, 4).background(.tint.opacity(0.15), in: Capsule()).help("This question looks only in \(scope.path)")
                 }
                 TextField(model.answer == nil ? "Ask about your files, in your own words" : "Ask a follow-up, or something new", text: $model.question).textFieldStyle(.plain).font(.title2).focused($focused).onSubmit { model.ask() }
@@ -227,10 +236,10 @@ struct SourceRow: View {
                 if let id = scored.passage.source.noteId { Button("Open in Notes") { Notes.show(id: id) } }
                 else {
                     Button("Open") { NSWorkspace.shared.open(url) }
-                    Button { quickLook = url } label: { Image(systemName: "eye") }.help("Quick Look")
-                    Button { NSWorkspace.shared.activateFileViewerSelecting([url]) } label: { Image(systemName: "folder") }.help("Show in Finder")
+                    Button { quickLook = url } label: { Image(systemName: "eye") }.help("Quick Look").accessibilityLabel("Quick Look")
+                    Button { NSWorkspace.shared.activateFileViewerSelecting([url]) } label: { Image(systemName: "folder") }.help("Show in Finder").accessibilityLabel("Show in Finder")
                 }
-                Button { expanded.toggle() } label: { Image(systemName: expanded ? "chevron.up" : "chevron.down") }.help("Show the passage")
+                Button { expanded.toggle() } label: { Image(systemName: expanded ? "chevron.up" : "chevron.down") }.help("Show the passage").accessibilityLabel(expanded ? "Hide the passage" : "Show the passage")
             }
             if expanded { Text(scored.passage.text).font(.callout).textSelection(.enabled).padding(.leading, 56).foregroundStyle(.secondary) }
             else { Text(Passages.bestSentence(Query.parse(AskModel.shared.question).terms, in: scored.passage.text)).font(.callout).lineLimit(2).padding(.leading, 56).foregroundStyle(.secondary) }
@@ -288,8 +297,24 @@ struct SettingsView: View {
     }
 }
 
+/// Finder › right-click › Services › "Ask for Mac About This": the selected folder (or the file's
+/// folder) becomes the scope and the panel opens.
+final class ServiceProvider: NSObject {
+    @objc func askAboutSelection(_ pboard: NSPasteboard, userData: String, error: AutoreleasingUnsafeMutablePointer<NSString>) {
+        guard let urls = pboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL], let first = urls.first else { return }
+        var isDir: ObjCBool = false; FileManager.default.fileExists(atPath: first.path, isDirectory: &isDir)
+        Task { @MainActor in
+            AskModel.shared.scope = isDir.boolValue && urls.count == 1 ? first : first.deletingLastPathComponent()
+            PanelController.shared.show()
+        }
+    }
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private let services = ServiceProvider()
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.servicesProvider = services
+        NSUpdateDynamicServices()
         if ProcessInfo.processInfo.environment["ASKMAC_HOME"] == nil, !UserDefaults.standard.bool(forKey: "loginItemOffered") {
             UserDefaults.standard.set(true, forKey: "loginItemOffered"); try? SMAppService.mainApp.register()
         }

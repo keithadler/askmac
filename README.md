@@ -21,7 +21,7 @@ Press ⌥ Space in any app and the panel floats over your work, like Spotlight. 
 3. **Rank.** Each file becomes passages, scored on the words they contain and on meaning, using the Mac's own word embeddings. No file may take more than three places.
 4. **Answer.** On macOS 26 with Apple Intelligence, Apple's on-device model writes two or three sentences from those passages with numbered citations, and says plainly when the files do not answer. Anywhere else, the answer is the best sentence quoted from the top file.
 
-Every answer lists its sources. An answer you cannot check is not an answer. While it works, the sources appear the moment ranking finishes and the answer streams in over them as Apple's model writes it. The empty panel suggests questions about the documents you changed most recently, so the first question is never a blank page. ⌥ Space brings the window forward from anywhere. Follow-ups work: after "lease deposit", "and when is rent due" keeps looking at the lease. Drop a folder on the window to ask about just that folder, or `--in <folder>` on the command line.
+Every answer lists its sources. An answer you cannot check is not an answer. While it works, the sources appear the moment ranking finishes and the answer streams in over them as Apple's model writes it. The empty panel suggests questions about the documents you changed most recently, so the first question is never a blank page. ⌥ Space brings the window forward from anywhere. Follow-ups work: after "lease deposit", "and when is rent due" keeps looking at the lease. Right-click a folder in Finder and choose Services › Ask for Mac About This, or drop a folder on the window, to ask about just that folder; `--in <folder>` on the command line.
 
 ## What it does not do
 

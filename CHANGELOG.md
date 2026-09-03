@@ -2,7 +2,7 @@
 
 ## 0.8.0 — 2026-09-03
 
-A quick panel on ⌥ Space that floats over any app, like Spotlight; Escape closes it. Sources appear the moment ranking finishes, with the answer streaming in above them. The empty panel suggests questions about the documents changed most recently on this Mac. Share and Copy buttons on every answer. The Recent list restores an earlier answer instantly.
+A quick panel on ⌥ Space that floats over any app, like Spotlight; Escape closes it. Sources appear the moment ranking finishes, with the answer streaming in above them. The empty panel suggests questions about the documents changed most recently on this Mac. Share and Copy buttons on every answer. The Recent list restores an earlier answer instantly. A Finder Service, "Ask for Mac About This", scopes the panel to the selected folder. A one-time tip on first launch. Accessibility labels on every icon button.
 
 ## 0.7.0 — 2026-09-03
 

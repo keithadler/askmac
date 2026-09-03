@@ -110,7 +110,7 @@ struct ScopeChip: View {
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: "folder"); Text(scope.lastPathComponent)
-            Button { model.scope = nil } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain).help("Search everywhere again")
+            Button { model.scope = nil } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain).help("Search everywhere again").accessibilityLabel("Search everywhere again")
         }.font(.callout).padding(.horizontal, 8).padding(.vertical, 4).background(.tint.opacity(0.15), in: Capsule()).help("This question looks only in \(scope.path)")
     }
 }
