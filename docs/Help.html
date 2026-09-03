@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask for Mac Help</title>
+<style>
+  :root { color-scheme: light dark; --fg: #1d1d1f; --muted: #6e6e73; --bg: #fff; --card: #f5f5f7; --accent: #0e7c86; --line: #e5e5ea; }
+  @media (prefers-color-scheme: dark) { :root { --fg: #f5f5f7; --muted: #a1a1a6; --bg: #1c1c1e; --card: #2c2c2e; --accent: #5fd0dc; --line: #3a3a3c; } }
+  body { margin: 0; font: 15px/1.55 -apple-system, "SF Pro Text", Helvetica, Arial, sans-serif; color: var(--fg); background: var(--bg); }
+  main { max-width: 760px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 30px; margin: 0 0 4px; } h1 small { display: block; font-size: 15px; font-weight: 400; color: var(--muted); }
+  h2 { font-size: 20px; margin: 36px 0 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+  h3 { font-size: 16px; margin: 20px 0 6px; } .muted { color: var(--muted); }
+  code, pre { font: 13px ui-monospace, "SF Mono", Menlo, monospace; } pre { background: var(--card); padding: 12px 14px; border-radius: 8px; overflow-x: auto; }
+  .card { background: var(--card); border-radius: 10px; padding: 14px 16px; margin: 12px 0; } .warn { border-left: 4px solid #d9a400; }
+  nav a { margin-right: 14px; color: var(--accent); text-decoration: none; } a { color: var(--accent); }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 16px; } td, th { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; } th { color: var(--muted); font-weight: 600; font-size: 13px; }
+</style>
+</head>
+<body><main>
+<h1>Ask for Mac <small>Ask your files a question. The answer, and the file, on this Mac.</small></h1>
+<nav><a href="#start">Getting started</a><a href="#how">How it answers</a><a href="#ask">Asking well</a><a href="#where">What it searches</a><a href="#ai">Apple Intelligence</a><a href="#cli">Command line</a><a href="#privacy">Privacy</a><a href="#trouble">Troubleshooting</a></nav>
+
+<h2 id="start">Getting started</h2>
+<p>Type a question the way you would ask a person who had read everything in your Documents, Desktop, Downloads, iCloud Drive and Mail. Press Return. The answer appears with the files it came from; Open opens one, the folder button shows it in Finder, the arrow shows the passage it was taken from.</p>
+<div class="card">Nothing needs setting up. Ask for Mac uses the index your Mac already keeps (Spotlight) to find candidate files, then reads those files itself while it answers, and keeps nothing afterwards.</div>
+
+<h2 id="how">How it answers</h2>
+<ol>
+<li><strong>Find.</strong> Spotlight is asked for files whose text or name contains your words, within the date window if you named one.</li>
+<li><strong>Read.</strong> Those files are read on the Mac: PDF, Word, RTF, HTML, text, Markdown, CSV and Mail messages.</li>
+<li><strong>Rank.</strong> Each file is split into passages. Passages score on the words they contain and, using the Mac's own language model for word meaning, how close they are to the question. The best few win; no single file may take more than three places.</li>
+<li><strong>Answer.</strong> On macOS 26 with Apple Intelligence on, Apple's on-device model writes two or three sentences from those passages, each fact followed by a citation like [1], and says <em>The files I found do not answer that</em> when they do not. Otherwise the answer is the best-matching sentence quoted from the top file.</li>
+</ol>
+<p>Either way, the sources are listed. An answer you cannot check is not an answer.</p>
+
+<h2 id="ask">Asking well</h2>
+<ul>
+<li><strong>Use the words that would be in the file.</strong> "lease deposit" beats "how much did I pay the landlord up front", because the file says deposit.</li>
+<li><strong>Dates help.</strong> "last week", "yesterday", "in March", "from Tuesday", "2025", "3 weeks ago" all narrow the search to files changed then.</li>
+<li><strong>Name the kind</strong> when you know it: "the lease PDF", "email from Sam", "spreadsheet with the budget".</li>
+<li><strong>Fewer words when nothing is found.</strong> Every word must appear somewhere; drop the ones you are least sure of.</li>
+</ul>
+
+<h2 id="where">What it searches</h2>
+<p>Documents, Desktop, Downloads and iCloud Drive by default; add or remove folders in Settings. Mail is included when Ask for Mac has Full Disk Access, which macOS requires for reading another app's mail store; without it, files still work. Photos and other images are skipped in this version, as are Numbers, Pages and Keynote documents and Apple Notes.</p>
+
+<h2 id="ai">Apple Intelligence</h2>
+<p>Written answers use Apple's on-device model, which exists on macOS 26 on Apple silicon with Apple Intelligence turned on in System Settings. The status line at the bottom of the window says which mode you are in. The model runs entirely on the Mac; Ask for Mac never uses Private Cloud Compute or any other server. Turn it off in Settings to always get quoted sentences instead.</p>
+
+<h2 id="cli">Command line</h2>
+<pre>ln -s "/Applications/Ask for Mac.app/Contents/MacOS/AskMac" /usr/local/bin/askmac
+askmac "lease deposit last week"
+askmac "dentist invoice crown" --json
+askmac "tax return 2025 total" --quote     # skip the on-device model
+askmac status
+askmac folders add ~/Projects</pre>
+<p>Exit code 0 when answered, 1 when nothing was found.</p>
+
+<h2 id="privacy">Privacy</h2>
+<p>Nothing leaves the Mac: not the question, not the files, not the answer. There is no index of your files beyond the one macOS already keeps. Recent questions are remembered in the app's own settings and can be turned off or cleared in Settings. The daily update check asks GitHub for a version number and sends nothing about you.</p>
+
+<h2 id="trouble">Troubleshooting</h2>
+<h3>It finds nothing, but the file exists</h3>
+<p>Spotlight may not have indexed that folder yet, or indexing is off for it (System Settings › Spotlight › Search Privacy). Ask for Mac falls back to reading the folder directly when Spotlight returns nothing, which is slower but works.</p>
+<h3>The answer quotes a sentence instead of writing one</h3>
+<p>That is the mode without Apple Intelligence. The status line at the bottom says why: older macOS, an Intel Mac, Apple Intelligence off, or its model still downloading.</p>
+<h3>Mail is not included</h3>
+<p>Give Ask for Mac Full Disk Access in System Settings › Privacy &amp; Security, then ask again.</p>
+</main></body></html>

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ayuda de Ask for Mac</title>
+<style>
+  :root { color-scheme: light dark; --fg: #1d1d1f; --muted: #6e6e73; --bg: #fff; --card: #f5f5f7; --accent: #0e7c86; --line: #e5e5ea; }
+  @media (prefers-color-scheme: dark) { :root { --fg: #f5f5f7; --muted: #a1a1a6; --bg: #1c1c1e; --card: #2c2c2e; --accent: #5fd0dc; --line: #3a3a3c; } }
+  body { margin: 0; font: 15px/1.55 -apple-system, "SF Pro Text", Helvetica, Arial, sans-serif; color: var(--fg); background: var(--bg); }
+  main { max-width: 760px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 30px; margin: 0 0 4px; } h1 small { display: block; font-size: 15px; font-weight: 400; color: var(--muted); }
+  h2 { font-size: 20px; margin: 36px 0 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+  h3 { font-size: 16px; margin: 20px 0 6px; } .muted { color: var(--muted); }
+  code, pre { font: 13px ui-monospace, "SF Mono", Menlo, monospace; } pre { background: var(--card); padding: 12px 14px; border-radius: 8px; overflow-x: auto; }
+  .card { background: var(--card); border-radius: 10px; padding: 14px 16px; margin: 12px 0; } .warn { border-left: 4px solid #d9a400; }
+  nav a { margin-right: 14px; color: var(--accent); text-decoration: none; } a { color: var(--accent); }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 16px; } td, th { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; } th { color: var(--muted); font-weight: 600; font-size: 13px; }
+</style>
+</head>
+<body><main>
+<h1>Ask for Mac <small>Pregunta a tus archivos. La respuesta, y el archivo, en este Mac.</small></h1>
+<nav><a href="#start">Primeros pasos</a><a href="#how">Cómo responde</a><a href="#ask">Preguntar bien</a><a href="#where">Qué busca</a><a href="#ai">Apple Intelligence</a><a href="#cli">Línea de comandos</a><a href="#privacy">Privacidad</a></nav>
+
+<h2 id="start">Primeros pasos</h2>
+<p>Escribe la pregunta como se la harías a una persona que hubiera leído todo lo que hay en Documentos, Escritorio, Descargas, iCloud Drive y Mail. Pulsa Intro. La respuesta aparece con los archivos de donde salió; Open abre uno, el botón de carpeta lo muestra en el Finder y la flecha muestra el pasaje del que se tomó.</p>
+<div class="card">No hay nada que configurar. Ask for Mac usa el índice que tu Mac ya mantiene (Spotlight) para encontrar archivos candidatos, luego los lee mientras responde y no guarda nada después.</div>
+
+<h2 id="how">Cómo responde</h2>
+<ol>
+<li><strong>Buscar.</strong> Se pide a Spotlight archivos cuyo texto o nombre contenga tus palabras, dentro de la ventana de fechas si nombraste una.</li>
+<li><strong>Leer.</strong> Esos archivos se leen en el Mac: PDF, Word, RTF, HTML, texto, Markdown, CSV y mensajes de Mail.</li>
+<li><strong>Ordenar.</strong> Cada archivo se divide en pasajes, puntuados por las palabras que contienen y por su cercanía de significado a la pregunta. Ningún archivo ocupa más de tres puestos.</li>
+<li><strong>Responder.</strong> En macOS 26 con Apple Intelligence, el modelo local de Apple escribe dos o tres frases a partir de esos pasajes, con citas como [1], y dice cuándo los archivos no responden. En otro caso, la respuesta es la frase que mejor encaja, citada del archivo.</li>
+</ol>
+
+<h2 id="ask">Preguntar bien</h2>
+<ul>
+<li><strong>Usa las palabras que estarían en el archivo.</strong> "lease deposit" funciona mejor que una frase larga, porque el archivo dice deposit.</li>
+<li><strong>Las fechas ayudan.</strong> "last week", "yesterday", "in March", "from Tuesday", "2025", "3 weeks ago" acotan la búsqueda.</li>
+<li><strong>Nombra el tipo</strong> si lo sabes: "the lease PDF", "email from Sam".</li>
+<li><strong>Menos palabras si no encuentra nada.</strong> Cada palabra debe aparecer en algún sitio.</li>
+</ul>
+
+<h2 id="where">Qué busca</h2>
+<p>Documentos, Escritorio, Descargas e iCloud Drive por defecto; añade o quita carpetas en Ajustes. Mail se incluye cuando Ask for Mac tiene Acceso total al disco. Las imágenes, Numbers, Pages, Keynote y Notas quedan fuera en esta versión.</p>
+
+<h2 id="ai">Apple Intelligence</h2>
+<p>Las respuestas escritas usan el modelo local de Apple, disponible en macOS 26 en Apple silicon con Apple Intelligence activado. La línea de estado al pie de la ventana dice en qué modo estás. Nunca se usa Private Cloud Compute ni ningún servidor.</p>
+
+<h2 id="cli">Línea de comandos</h2>
+<pre>askmac "lease deposit last week"
+askmac "dentist invoice crown" --json
+askmac status</pre>
+
+<h2 id="privacy">Privacidad</h2>
+<p>Nada sale del Mac: ni la pregunta, ni los archivos, ni la respuesta. No hay más índice que el que macOS ya mantiene. Las preguntas recientes se guardan en los ajustes de la app y se pueden desactivar o borrar.</p>
+</main></body></html>
