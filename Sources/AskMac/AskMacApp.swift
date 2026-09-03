@@ -149,7 +149,8 @@ struct MainView: View {
             _ = p.loadObject(ofClass: URL.self) { url, _ in
                 guard let url else { return }
                 var isDir: ObjCBool = false; FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
-                Task { @MainActor in model.scope = isDir.boolValue ? url : url.deletingLastPathComponent(); focused = true }
+                let scope = isDir.boolValue ? url : url.deletingLastPathComponent()
+                Task { @MainActor in model.scope = scope; focused = true }
             }
             return true
         }
@@ -303,8 +304,9 @@ final class ServiceProvider: NSObject {
     @objc func askAboutSelection(_ pboard: NSPasteboard, userData: String, error: AutoreleasingUnsafeMutablePointer<NSString>) {
         guard let urls = pboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL], let first = urls.first else { return }
         var isDir: ObjCBool = false; FileManager.default.fileExists(atPath: first.path, isDirectory: &isDir)
+        let scope = isDir.boolValue && urls.count == 1 ? first : first.deletingLastPathComponent()
         Task { @MainActor in
-            AskModel.shared.scope = isDir.boolValue && urls.count == 1 ? first : first.deletingLastPathComponent()
+            AskModel.shared.scope = scope
             PanelController.shared.show()
         }
     }

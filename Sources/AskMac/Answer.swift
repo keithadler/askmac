@@ -140,21 +140,23 @@ enum Ask {
         let toRead = Array(cands.prefix(40))
         progress?(toRead.isEmpty ? "Nothing matched." : "Reading \(toRead.count) \(toRead.count == 1 ? "file" : "files")…")
         // Read candidates in parallel; each file's text lives only until it is split into passages.
-        var perFile = [[Passage]](repeating: [], count: toRead.count)
+        // A box, not a captured array: older Swift treats the concurrentPerform closure as
+        // @Sendable and rejects mutating a captured var, even under a lock.
+        let perFile = PassageSlots(count: toRead.count)
         let lock = NSLock()
         DispatchQueue.concurrentPerform(iterations: toRead.count) { i in
             autoreleasepool {
                 if Task.isCancelled { return }
                 if toRead[i].kind == .pdf, let pages = Extract.pdfPages(toRead[i].url) {
-                    let p = Passages.split(pages: pages, source: toRead[i]); lock.lock(); perFile[i] = p; lock.unlock()
+                    let p = Passages.split(pages: pages, source: toRead[i]); lock.lock(); perFile.set(i, p); lock.unlock()
                 } else if let t = toRead[i].text ?? Extract.text(from: toRead[i].url) {
                     var c = toRead[i]
                     if c.kind == .mail, let subject = t.split(separator: "\n").first, !subject.isEmpty { c.title = String(subject) }   // "Roof estimate", not "12345"
-                    let p = Passages.split(t, source: c); lock.lock(); perFile[i] = p; lock.unlock()
+                    let p = Passages.split(t, source: c); lock.lock(); perFile.set(i, p); lock.unlock()
                 }
             }
         }
-        let passages = perFile.flatMap { $0 }
+        let passages = perFile.all.flatMap { $0 }
         lap("read")
         if Task.isCancelled { return Answer(text: "", how: .none, sources: [], elapsed: Date().timeIntervalSince(started), candidates: cands.count, note: "Stopped.") }
         progress?("Ranking \(passages.count) passages…")
@@ -179,4 +181,13 @@ enum Prefs {
     static var menuBar: Bool { get { defaults.object(forKey: "menuBar") as? Bool ?? true } set { defaults.set(newValue, forKey: "menuBar") } }
     static var keepHistory: Bool { get { defaults.object(forKey: "keepHistory") as? Bool ?? true } set { defaults.set(newValue, forKey: "keepHistory") } }
     static var history: [String] { get { defaults.stringArray(forKey: "history") ?? [] } set { defaults.set(Array(newValue.suffix(50)), forKey: "history") } }
+}
+
+/// One slot per file for the parallel read. The caller holds the lock; this only exists so the
+/// storage is a reference the concurrent closure may touch.
+final class PassageSlots: @unchecked Sendable {
+    private var slots: [[Passage]]
+    init(count: Int) { slots = [[Passage]](repeating: [], count: count) }
+    func set(_ i: Int, _ p: [Passage]) { slots[i] = p }
+    var all: [[Passage]] { slots }
 }

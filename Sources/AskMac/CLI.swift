@@ -105,10 +105,12 @@ enum CLI {
             guard question.count > 2 else { err(usage + "\n"); return 64 }
             let limit = Int(value("--limit", args) ?? "") ?? 8
             if let folder = value("--in", args) { Sources.scopeOverride = URL(fileURLWithPath: folder).standardizedFileURL }
-            let sem = DispatchSemaphore(value: 0); var answer: Answer?
-            Task { answer = await Ask.run(question, useModel: !flag("--quote", args) && Prefs.useModel, limit: limit); sem.signal() }
+            let sem = DispatchSemaphore(value: 0)
+            let box = AnswerBox()
+            let useModel = !flag("--quote", args) && Prefs.useModel
+            Task { box.set(await Ask.run(question, useModel: useModel, limit: limit)); sem.signal() }
             sem.wait()
-            guard let a = answer else { return 2 }
+            guard let a = box.value else { return 2 }
             if js { out(json(["question": question, "answer": a.text, "how": a.how.rawValue, "note": a.note ?? "", "candidates": a.candidates, "seconds": (a.elapsed * 100).rounded() / 100, "phases": a.phases, "sources": a.sources.map(sourceDict)])) }
             else {
                 if a.how == .none { out(a.note ?? "Nothing found."); return 1 }
