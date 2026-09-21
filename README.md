@@ -62,5 +62,5 @@ Four more small apps built the same way: each does one thing, says exactly what 
 
 - [Permissions for Mac](https://github.com/keithadler/permsmac): every permission on your Mac on one screen, in plain English, with what changed since last week.
 - [Clip for Mac](https://github.com/keithadler/clipmac): a clipboard that remembers, with a stack you paste through one item at a time, and that refuses to record passwords.
-- [Tidy for Mac](https://github.com/keithadler/tidymac): cleanup and speed for the whole family; nothing is deleted, only moved to the Trash with an undoable receipt.
+- [Clean for Mac](https://github.com/keithadler/cleanmac): cleanup and speed for the whole family; nothing is deleted, only moved to the Trash with an undoable receipt.
 - [Stash for Mac](https://github.com/keithadler/stashmac): encrypted backup into storage you already have; the provider only ever sees ciphertext.
