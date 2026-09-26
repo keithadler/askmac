@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1 - 2026-09-25
+
+Built and tested on macOS 27.
+
+- Checked on a real macOS 27 Mac: Spotlight queries (word-prefix content, name, title, content type and date filters, images by name) return the same kind of results as on 26, `mdutil` still reports indexing the same way, and Apple Intelligence writes answers through the on-device model. Nothing in the search or answer path needed to change.
+- README, Help (English and Spanish) and the status line say written answers need macOS 26 "or later", not macOS 26 only.
+
 ## 1.0.0 — 2026-09-03
 
 First public release; everything below is in it.

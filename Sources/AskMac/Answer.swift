@@ -43,7 +43,7 @@ enum Answerer {
             }
         }
         #endif
-        return (false, "Written answers need macOS 26 with Apple Intelligence; on this Mac answers are quoted from your files.")
+        return (false, "Written answers need macOS 26 or later with Apple Intelligence; on this Mac answers are quoted from your files.")
     }
 
     static func answer(_ q: Query, scored: [Scored], candidates: Int, useModel: Bool, started: Date, onPartial: ((String) -> Void)? = nil) async -> Answer {

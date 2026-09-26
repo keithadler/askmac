@@ -8,7 +8,7 @@ Your Mac cannot do this on its own. Spotlight finds files but does not read them
 
 ## Download
 
-**[Download Ask-for-Mac-1.0.0.dmg](https://github.com/keithadler/askmac/releases/latest/download/Ask-for-Mac-1.0.0.dmg)** (macOS 14 or later, Apple Silicon and Intel; written answers need macOS 26 with Apple Intelligence)
+**[Download Ask-for-Mac-1.0.1.dmg](https://github.com/keithadler/askmac/releases/latest/download/Ask-for-Mac-1.0.1.dmg)** (macOS 14 or later, Apple Silicon and Intel; written answers need macOS 26 or later with Apple Intelligence)
 
 Open the DMG, drag the app to Applications, open it. The first time, macOS says the app is from an unidentified developer: right-click the app, choose Open, then Open again. That is once. Nothing else to set up.
 
@@ -21,7 +21,7 @@ Press ⌥ Space in any app and the panel floats over your work, like Spotlight. 
 1. **Find.** Your Mac already keeps a full-text index of every file and mail message: Spotlight. Ask for Mac asks it for files containing your words, within the dates you named.
 2. **Read.** Those files are read on the Mac: PDF, Word, Excel, PowerPoint, RTF, HTML, text, Markdown, CSV and Mail messages. When a question asks for a screenshot or photo, images are read with on-device text recognition; when it mentions notes, Apple Notes are read through the Notes app.
 3. **Rank.** Each file becomes passages, scored on the words they contain and on meaning, using the Mac's own word embeddings. No file may take more than three places.
-4. **Answer.** On macOS 26 with Apple Intelligence, Apple's on-device model writes two or three sentences from those passages with numbered citations, and says plainly when the files do not answer. Anywhere else, the answer is the best sentence quoted from the top file.
+4. **Answer.** On macOS 26 or later with Apple Intelligence, Apple's on-device model writes two or three sentences from those passages with numbered citations, and says plainly when the files do not answer. Anywhere else, the answer is the best sentence quoted from the top file.
 
 Every answer lists its sources. An answer you cannot check is not an answer. While it works, the sources appear the moment ranking finishes and the answer streams in over them as Apple's model writes it. The empty panel suggests questions about the documents you changed most recently, so the first question is never a blank page. ⌥ Space brings the window forward from anywhere. Follow-ups work: after "lease deposit", "and when is rent due" keeps looking at the lease. Right-click a folder in Finder and choose Services › Ask for Mac About This, or drop a folder on the window, to ask about just that folder; `--in <folder>` on the command line.
 
